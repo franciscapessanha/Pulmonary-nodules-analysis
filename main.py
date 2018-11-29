@@ -70,7 +70,10 @@ Returns:
     * val: list with the nodules and labels for the validation set
 """
 
+"""
 
+ISTO ESTÁ MAL
+============
 def splitData(data, labels):
     x_train, xi_test, y_train, yi_test = train_test_split(data, labels, test_size = 0.3, random_state=0)
     xf_test, x_val, yf_test, y_val = train_test_split(xi_test, yi_test, test_size = 0.5, random_state=0)
@@ -116,13 +119,13 @@ def assignMasks(data, masks):
 masks_train = assignMasks(x_train, masks)
 masks_test = assignMasks(x_test, masks)
 masks_val = assignMasks(x_val, masks)
-
+"""
 
 #%%________________________________
 # SEGMENTATION - Campilho 
 #________________________________
 import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
+import matplotlib.pyplot as mpimg
 import numpy as np
 
 from scipy.ndimage import gaussian_filter
@@ -131,9 +134,10 @@ from scipy.ndimage import gaussian_filter
 # ====================================================================
 sigma = [0.5, 1, 1.5, 2, 2.5, 3, 3.5]
 smooth_nodules = []
-for i in range(x_train.shape[0]):
-    nodule = getMiddleSlice(np.load(x_train[i,1]))
-    
+splited_nodules = []
+for i in range(nodules.shape[1]):
+    nodule = getMiddleSlice(np.load(nodules[1,i]))
+    splited_nodules.append(nodule)
     smooth_nod = []
     for s in range(len(sigma)):
         smooth_nod.append(gaussian_filter(nodule, sigma[s]))
@@ -141,7 +145,7 @@ for i in range(x_train.shape[0]):
     smooth_nodules.append(smooth_nod)
     
 # testing if it worked
-ex= 10
+ex= 3
 plot_args={}
 plot_args['vmin']=0
 plot_args['vmax']=1
@@ -149,7 +153,7 @@ plot_args['cmap']='gray'
 
 sample = smooth_nodules[ex]
 print("ORIGINAL \n==========")
-original_plot = plt.imshow(getMiddleSlice(np.load(x_train[ex,1])),**plot_args)
+original_plot = plt.imshow(getMiddleSlice(nodule[ex],**plot_args))
 plt.show()
 for j in range(len(sample)):
     print("SIGMA = %.1f \n===========" % sigma[j])
@@ -159,54 +163,43 @@ for j in range(len(sample)):
 # 2. Compute the Hessian matrix
 # =============================
 
-image = sample[1] - np.mean(sample[1])
-plt.imshow(image, **plot_args)
-plt.show()
-lower_ev = sample[1]
-higher_ev = sample[1]
-[gx, gy] = np.gradient(image)
-[gxx, gxy] = np.gradient(gx)
-[gxy, gyy] = np.gradient(gy)
+from skimage.feature import hessian_matrix
+#image = sample[1] - np.mean(sample[1])
 
-hessian = np.asarray([[gxx,gxy], [gxy, gyy]])
+image = sample[2]
+Hrr, Hrc, Hcc = hessian_matrix(image)
+lower_ev = image
+higher_ev = image
 eig_image = np.zeros((len(image),len(image))).tolist()
+
 for i in range(len(image)):
     for j in range(len(image)):
-        eig_values, _ = np.linalg.eig(hessian[:,:,i,j])
-        sorted_ev = np.sort(eig_values)
+        eig_values, _ = np.linalg.eig(np.asarray([[Hrr[i,j], Hrc[i,j]],[Hrc[i,j], Hcc[i,j]]]))
+        sorted_ev = np.asarray(np.sort(eig_values))
         lower_ev[i,j] = sorted_ev[0]
         higher_ev[i,j] = sorted_ev[1]
 
+def normalizePlanes(npzarray,maxHU=400.,minHU=-1000.):#400, -1200
+    npzarray = (npzarray - minHU) / (maxHU - minHU)
+    npzarray[npzarray>1] = 1.
+    npzarray[npzarray<0] = 0.
+    return npzarray
+
+
 plot_args={}
-plot_args['vmin']=0
-plot_args['vmax']=1
+plot_args['vmin']= np.min(lower_ev)
+plot_args['vmax']= np.max(higher_ev)
 plot_args['cmap']='gray'
 lower_plot = plt.imshow(lower_ev, **plot_args)
 plt.show()
 higher_plot = plt.imshow(higher_ev, **plot_args)
 plt.show()
 
-def EigenImages(d):
-    v = len(d)
-    h = v
-    n = 1
-    dd = d.astype(float) - d.astype(float).mean(0)
-    print(dd)
-    L = np.zeros((n,n))
-    for i in range(n):
-        L[i,i] = (dd[i] * dd[i]).sum()
-        for j in range(i):
-            L[i,j] = L[j,i] = (dd[i] * dd[j]).sum()
-        evls, evcs = np.linalg.eig(L)
-        emgs = []
-    for j in range(n):
-        a = np.zeros((v,h))
-        for i in range(n):
-            a += evcs[i,j] * dd[i]
-        emgs.append ( a/np.sqrt(evls[j]))
+plot_args={}
+plot_args['vmin']=0
+plot_args['vmax']=1
+plot_args['cmap']='gray'
+mask = np.load(masks_train[ex,1])
+mask = getMiddleSlice(mask)
+plt.imshow(mask, **plot_args)
 
-    return emgs, evls, evcs
-
-plt.imshow(emgs[0],** plot_args)
-plt.show()
-emgs, evls, evcs = EigenImages(sample[1])

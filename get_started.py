@@ -132,6 +132,22 @@ def loadData():
     
     return nodules, masks, metadata
 
+non_solid = []
+sub_solid = []
+solid = []
+for index in range(nodules.shape[1]):
+    texture = int(metadata[metadata['Filename']==nodules[0, index]]['texture'])
+
+    if texture <=2:
+        non_solid.append(index)
+    elif texture >= 3 and texture <= 4:
+        sub_solid.append(index)
+    elif texture == 5:
+        solid.append(index)
+non_solid = np.asarray(non_solid)
+sub_solid = np.asarray(sub_solid)
+solid = np.asarray(solid)
+
 #%%
 #________________________________
 # SHOW IMAGES
@@ -210,7 +226,7 @@ def meanIntensity(nodule,mask):
     nodule = np.load(nodule[1])
     mask = np.load(mask[1])
     
-    return np.mean(nodule[mask!=0])
+    return np.mean(nodule[masik!=0])
     #print('The intensity of nodule',str(index),'is',intensity)
 
 
