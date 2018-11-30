@@ -132,21 +132,6 @@ def loadData():
     
     return nodules, masks, metadata
 
-non_solid = []
-sub_solid = []
-solid = []
-for index in range(nodules.shape[1]):
-    texture = int(metadata[metadata['Filename']==nodules[0, index]]['texture'])
-
-    if texture <=2:
-        non_solid.append(index)
-    elif texture >= 3 and texture <= 4:
-        sub_solid.append(index)
-    elif texture == 5:
-        solid.append(index)
-non_solid = np.asarray(non_solid)
-sub_solid = np.asarray(sub_solid)
-solid = np.asarray(solid)
 
 #%%
 #________________________________
@@ -184,12 +169,16 @@ def showImages(nodules, masks, nodules_indexes, nodules_and_mask = True, overlay
     #if instead you want to overlay
     if overlay:
         for n in nodules_indexes:
+            print(len(nodules_indexes))
             nodule = np.load(nodules[1,n])
             mask = np.load(masks[1,n])
             over = createOverlay(getMiddleSlice(nodule),getMiddleSlice(mask))
             #since we have volume we must show only a slice
             fig,ax = plt.subplots(1,1)
+            
+            filename = "nodule_%d.jpg" % n
             ax.imshow(over,**plot_args)
+            plt.imsave(filename,over)
             plt.show()
 
 """
