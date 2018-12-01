@@ -104,7 +104,7 @@ Returns:
 
 def splitData(data, labels):
 
-    x_train, xi_test, y_train, yi_test = train_test_split(data, labels, train_size = 20, random_state=0)
+    x_train, xi_test, y_train, yi_test = train_test_split(data, labels, test_size = 0.3, random_state=0)
     xf_test, x_val, yf_test, y_val = train_test_split(xi_test, yi_test, test_size = 0.5, random_state=0)
     
     train = [x_train, y_train]
