@@ -12,11 +12,8 @@ import matplotlib.pyplot as mpimg
 import numpy as np
 from scipy.ndimage import gaussian_filter
 from skimage.feature import hessian_matrix, hessian_matrix_eigvals
-from numpy import linalg
-import cv2 as cv
 from skimage.feature import shape_index
 from show_images import showImages
-from lung_mask import get_lung_mask
 from sklearn.neighbors import KNeighborsClassifier
 
 
@@ -91,40 +88,6 @@ def getEigNodules(smooth_nodules):
     
     return eig_nodules
 
-# 3.0.1 Get best image
-# ====================
-
-def getMaximumResponse(eig_nodules):
-    max_nodules = []
-    
-    for n in range(len(eig_nodules)):
-        max_nodule_0 = np.zeros((51,51))
-        max_nodule_1 = np.zeros((51,51))
-        all_nodule_sigmas = eig_nodules[n] 
-        
-        for i in range(51):
-            for j in range(51):
-                values_0 = []
-                values_1 = []
-                for s in range(len(all_nodule_sigmas)):
-                    
-                    nodule_0 = all_nodule_sigmas[s][0]
-                    nodule_1 = all_nodule_sigmas[s][1]
-                    px_0= nodule_0[i,j]
-                    px_1= nodule_1[i,j]
-                    
-                    values_0.append(px_0)
-                    values_1.append(px_1)
-                
-                max_nodule_0[i][j] = np.max(values_0) 
-                max_nodule_1[i][j] = np.min(values_1)   
-                
-        #plotImage(max_nodule_0)        
-        #plotImage(max_nodule_1) 
-        max_nodules.append([max_nodule_0, max_nodule_1])
-        
-    return max_nodules
-
 # 3.1 Shape index 
 # ===============
     
@@ -144,49 +107,89 @@ def plotImage(image):
     plt.imshow(image, **plot_args)
     plt.show()
 
-def getSI(max_nodules):
+#%%%
+
+def getSI(eig_nodules):
     SI_nodules = [] 
-    for nodule in max_nodules:
-        lower_eig = nodule[1]
-        higher_eig = nodule[0]
-        shape_indexes = (2/np.pi) * np.arctan((lower_eig + higher_eig)/(lower_eig - higher_eig))
-        #plotImage(shape_indexes)
-        SI_nodules.append(shape_indexes)
+    
+    for all_sigmas_nodule in eig_nodules:
+        all_SI = []
+        for s in range(len(all_sigmas_nodule)):
+            nodule = all_sigmas_nodule[s]
+            lower_eig = nodule[1]
+            higher_eig = nodule[0]
+            shape_indexes = (2/np.pi) * np.arctan((lower_eig + higher_eig)/(lower_eig - higher_eig))    
+            all_SI.append(shape_indexes)
         
+        SI_nodule = np.zeros((51,51))
+        for i in range(51):
+            for j in range(51):
+                values = []
+                for k in range(len(all_sigmas_nodule)):
+                    si = all_SI[k]
+                    px = si[i,j]
+                    values.append(px)
+                SI_nodule[i][j] = np.max(values)
+    
+        SI_nodules.append(SI_nodule)
+    
     return SI_nodules
 
-
+#%%%
 # 3.2 Curvedness approach 
 # ======================== 
 #we will compute the curvedness manually
 
 def getCV(max_nodules):
-    CV_nodules = []    
-    for nodule in max_nodules:
-        lower_eig = nodule[1]
-        higher_eig = nodule[0]
-        curvedness = np.sqrt(lower_eig**2 + higher_eig**2)
-        #plotImage(curvedness)
-        CV_nodules.append(curvedness)
-    
+    CV_nodules = []
+    for all_sigmas_nodule in eig_nodules:
+        all_CV = []
+        for s in range(len(all_sigmas_nodule)):
+            nodule = all_sigmas_nodule[s]
+            lower_eig = nodule[1]
+            higher_eig = nodule[0]
+            curvedness = np.sqrt(lower_eig**2 + higher_eig**2)    
+            all_CV.append(curvedness)
+        
+        CV_nodule = np.zeros((51,51))
+        for i in range(51):
+            for j in range(51):
+                values = []
+                for k in range(len(all_sigmas_nodule)):
+                    cv_ = all_CV[k]
+                    px = cv_[i,j]
+                    values.append(px)
+                CV_nodule[i][j] = np.max(values)
+        CV_nodules.append(CV_nodule)
     return CV_nodules
     
 # 3.3 Central adaptive miedialness approach 
 # ==========================================
 
-def getVmed(max_nodules):
+def getVmed(max_nodules):     
     Vmed_nodules = []
-    for nodule in max_nodules:
-        lower_eig = nodule[1]
-        higher_eig = nodule[0] 
-        Vmed = np.zeros((51,51))
-        for i in range(len(Vmed)):
-            for j in range(len(Vmed)):
-                if lower_eig[i][j] + higher_eig[i][j] < 0:
-                    Vmed[i][j] = -(lower_eig[i][j]/lower_eig[i][j]) * (lower_eig[i][j] + lower_eig[i][j])
-        #plotImage(Vmed)
-        Vmed_nodules.append(Vmed)
-        
+    for all_sigmas_nodule in eig_nodules:
+        all_Vmed = []
+        for s in range(len(all_sigmas_nodule)):
+            nodule = all_sigmas_nodule[s]
+            lower_eig = nodule[1]
+            higher_eig = nodule[0]
+            Vmed = np.zeros((51,51))
+            for i in range(len(Vmed)):
+                for j in range(len(Vmed)):
+                    if lower_eig[i][j] + higher_eig[i][j] < 0:
+                        Vmed[i][j] = -(lower_eig[i][j]/lower_eig[i][j]) * (lower_eig[i][j] + lower_eig[i][j])
+            all_Vmed.append(Vmed)
+        Vmed_nodule = np.zeros((51,51))
+        for i in range(51):
+            for j in range(51):
+                values = []
+                for k in range(len(all_sigmas_nodule)):
+                    vmed = all_Vmed[k]
+                    px = vmed[i,j]
+                    values.append(px)
+                Vmed_nodule[i][j] = np.max(values)
+        Vmed_nodules.append(Vmed_nodule)
     return Vmed_nodules
 
 # 3.4 Run and plot all
@@ -196,95 +199,12 @@ train_slices, train_slices_masks, y_train, test_slices, test_slices_masks, y_tes
     
 smooth_nodules = gaussianSmooth(train_slices)
 eig_nodules = getEigNodules(smooth_nodules)
-max_nodules = getMaximumResponse(eig_nodules)
-SI_nodules = getSI(max_nodules)
-CV_nodules = getCV(max_nodules) 
-Vmed_nodules = getVmed(max_nodules) 
+SI_nodules = getSI(eig_nodules)
+CV_nodules = getCV(eig_nodules) 
+Vmed_nodules = getVmed(eig_nodules) 
 
-"""
 for i in range(len(train_slices)):
     showImages([train_slices[i]], [train_slices_masks[i]],overlay = False)
     plotImage(SI_nodules[i])
     plotImage(CV_nodules[i])
     plotImage(Vmed_nodules[i])
-"""
-
-#%%
-#4 Combination of the results - thresholding (tentar mascara pulmonar)
-# ====================================================================
-# SI - thresholding
-# -----------------
-SI_nodules_t = []
-
-t_SI = 0.3
-for nodule, k in zip(SI_nodules, range(len(SI_nodules))):
-    thresh_SI = np.zeros((51,51))
-    #t_SI = 0.5* np.max(nodule)
-    for i in range(len(thresh_SI)):
-        for j in range(len(thresh_SI)):   
-            if nodule[i][j] >= t_SI:
-                thresh_SI[i][j] = 1
-
-    thresh_SI[get_lung_mask(train_slices[k]) == 0] = 0
-    #plotImage(thresh_SI) 
-    SI_nodules_t.append(thresh_SI)
-  
-# CV - thresholding
-# -----------------
-t_CV = 0.06
-CV_nodules_t = []
-for nodule, k in zip(CV_nodules, range(len(CV_nodules))):
-    thresh_CV = np.zeros((51,51))
-    #t_CV = 0.3* np.max(nodule)
-    for i in range(len(thresh_CV)):
-        for j in range(len(thresh_CV)):   
-            if nodule[i][j] >= t_CV:
-                thresh_CV[i][j] = 1
-   
-    thresh_CV[get_lung_mask(train_slices[k]) == 0] = 0
-    #plotImage(thresh_CV)
-    CV_nodules_t.append(thresh_CV)
-
-# Vmed - thresholding
-# -----------------
-t_Vmed = 0.03
-Vmed_nodules_t = []
-Vmed_nodules_t = []
-for nodule, k in zip(Vmed_nodules, range(len(Vmed_nodules))):
-    thresh_Vmed = np.zeros((51,51))
-    #t_Vmed = 0.3* np.max(nodule)
-    for i in range(len(thresh_Vmed)):
-        for j in range(len(thresh_Vmed)):   
-            if nodule[i][j] >= t_Vmed:
-                thresh_Vmed[i][j] = 1
-    
-    #plotImage(thresh_Vmed) 
-    thresh_Vmed[get_lung_mask(train_slices[k]) == 0] = 0
-    Vmed_nodules_t.append(thresh_Vmed)
-    
-for i in range(len(train_slices)):
-    
-    print("INDEX = %.0f \n=============" % i)
-    showImages([train_slices[i]], [train_slices_masks[i]],overlay = False) 
-    plotImage(SI_nodules[i])
-    plotImage(CV_nodules[i])
-    plotImage(Vmed_nodules[i])
-   
-    #plotImage(SI_nodules_t[i])
-    #plotImage(CV_nodules_t[i])
-    #plotImage(Vmed_nodules_t[i])
-    
-    #mask = SI_nodules_t[i] + CV_nodules_t[i] + Vmed_nodules_t[i]
-    #plotImage(mask)
-    
-
-
-smooth_nodules_val = gaussianSmooth(val_slices)
-eig_nodules_val = getEigNodules(smooth_nodules_val)
-max_nodules_val = getMaximumResponse(eig_nodules_val)
-SI_nodules_val = getSI(max_nodules_val)
-CV_nodules_val = getCV(max_nodules_val) 
-Vmed_nodules_val = getVmed(max_nodules_val) 
-
-#cv, si, intensidde e vmed
-    

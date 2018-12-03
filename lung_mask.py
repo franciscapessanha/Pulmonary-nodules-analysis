@@ -45,9 +45,9 @@ train_slices, train_slices_masks, y_train, test_slices, test_slices_masks, y_tes
 
 for nodule, mask in zip(train_slices,train_slices_masks):
     convex = get_lung_mask(nodule)
-    showImages([nodule], [mask],overlay = False) 
-    plt.imshow(convex)
-    plt.show()
+    #showImages([nodule], [mask],overlay = False) 
+    #plt.imshow(convex)
+    #plt.show()
 """
 show_lung_mask
 ===============
