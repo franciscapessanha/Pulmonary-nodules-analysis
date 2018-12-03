@@ -9,8 +9,8 @@ import cv2
 from skimage.morphology import convex_hull_image
 import numpy as np
 from matplotlib import pyplot as plt
-
-
+from get_data import getData
+from show_images import showImages
 """
 get_lung_mask
 ===============
@@ -41,7 +41,13 @@ def get_lung_mask(nodule_image):
   
     return chull
 
+train_slices, train_slices_masks, y_train, test_slices, test_slices_masks, y_test , val_slices, val_slices_masks, y_val = getData()
 
+for nodule, mask in zip(train_slices,train_slices_masks):
+    convex = get_lung_mask(nodule)
+    showImages([nodule], [mask],overlay = False) 
+    plt.imshow(convex)
+    plt.show()
 """
 show_lung_mask
 ===============

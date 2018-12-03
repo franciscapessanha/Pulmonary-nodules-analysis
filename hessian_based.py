@@ -16,6 +16,9 @@ from numpy import linalg
 import cv2 as cv
 from skimage.feature import shape_index
 from show_images import showImages
+from lung_mask import get_lung_mask
+from sklearn.neighbors import KNeighborsClassifier
+
 
 # 1. Multiscale Gaussian smoothing using sigm in the range 0.5 to 3.5
 # ====================================================================
@@ -120,7 +123,7 @@ def getMaximumResponse(eig_nodules):
         #plotImage(max_nodule_1) 
         max_nodules.append([max_nodule_0, max_nodule_1])
         
-        return max_nodules
+    return max_nodules
 
 # 3.1 Shape index 
 # ===============
@@ -190,6 +193,7 @@ def getVmed(max_nodules):
 # =====================
 
 train_slices, train_slices_masks, y_train, test_slices, test_slices_masks, y_test , val_slices, val_slices_masks, y_val = getData()
+    
 smooth_nodules = gaussianSmooth(train_slices)
 eig_nodules = getEigNodules(smooth_nodules)
 max_nodules = getMaximumResponse(eig_nodules)
@@ -197,61 +201,90 @@ SI_nodules = getSI(max_nodules)
 CV_nodules = getCV(max_nodules) 
 Vmed_nodules = getVmed(max_nodules) 
 
+"""
 for i in range(len(train_slices)):
     showImages([train_slices[i]], [train_slices_masks[i]],overlay = False)
     plotImage(SI_nodules[i])
     plotImage(CV_nodules[i])
     plotImage(Vmed_nodules[i])
-
+"""
 
 #%%
 #4 Combination of the results - thresholding (tentar mascara pulmonar)
 # ====================================================================
 # SI - thresholding
 # -----------------
-t_SI = 0.4
 SI_nodules_t = []
-for nodule in SI_nodules:
+
+t_SI = 0.3
+for nodule, k in zip(SI_nodules, range(len(SI_nodules))):
     thresh_SI = np.zeros((51,51))
+    #t_SI = 0.5* np.max(nodule)
     for i in range(len(thresh_SI)):
         for j in range(len(thresh_SI)):   
             if nodule[i][j] >= t_SI:
                 thresh_SI[i][j] = 1
 
+    thresh_SI[get_lung_mask(train_slices[k]) == 0] = 0
     #plotImage(thresh_SI) 
     SI_nodules_t.append(thresh_SI)
   
 # CV - thresholding
 # -----------------
-t_CV = 0.05
+t_CV = 0.06
 CV_nodules_t = []
-for nodule in CV_nodules:
-
+for nodule, k in zip(CV_nodules, range(len(CV_nodules))):
     thresh_CV = np.zeros((51,51))
+    #t_CV = 0.3* np.max(nodule)
     for i in range(len(thresh_CV)):
         for j in range(len(thresh_CV)):   
             if nodule[i][j] >= t_CV:
                 thresh_CV[i][j] = 1
-    
-    #plotImage(thresh_CV) 
+   
+    thresh_CV[get_lung_mask(train_slices[k]) == 0] = 0
+    #plotImage(thresh_CV)
     CV_nodules_t.append(thresh_CV)
 
 # Vmed - thresholding
 # -----------------
-t_Vmed = 0.05
+t_Vmed = 0.03
 Vmed_nodules_t = []
-
 Vmed_nodules_t = []
-for nodule in Vmed_nodules:
-
+for nodule, k in zip(Vmed_nodules, range(len(Vmed_nodules))):
     thresh_Vmed = np.zeros((51,51))
+    #t_Vmed = 0.3* np.max(nodule)
     for i in range(len(thresh_Vmed)):
         for j in range(len(thresh_Vmed)):   
             if nodule[i][j] >= t_Vmed:
                 thresh_Vmed[i][j] = 1
     
     #plotImage(thresh_Vmed) 
-    CV_nodules_t.append(thresh_Vmed)
+    thresh_Vmed[get_lung_mask(train_slices[k]) == 0] = 0
+    Vmed_nodules_t.append(thresh_Vmed)
+    
+for i in range(len(train_slices)):
+    
+    print("INDEX = %.0f \n=============" % i)
+    showImages([train_slices[i]], [train_slices_masks[i]],overlay = False) 
+    plotImage(SI_nodules[i])
+    plotImage(CV_nodules[i])
+    plotImage(Vmed_nodules[i])
+   
+    #plotImage(SI_nodules_t[i])
+    #plotImage(CV_nodules_t[i])
+    #plotImage(Vmed_nodules_t[i])
+    
+    #mask = SI_nodules_t[i] + CV_nodules_t[i] + Vmed_nodules_t[i]
+    #plotImage(mask)
     
 
+
+smooth_nodules_val = gaussianSmooth(val_slices)
+eig_nodules_val = getEigNodules(smooth_nodules_val)
+max_nodules_val = getMaximumResponse(eig_nodules_val)
+SI_nodules_val = getSI(max_nodules_val)
+CV_nodules_val = getCV(max_nodules_val) 
+Vmed_nodules_val = getVmed(max_nodules_val) 
+
+#cv, si, intensidde e vmed
     
