@@ -5,7 +5,7 @@ Created on Sun Dec  2 13:29:57 2018
 @author: Hugo Barros
 """
 
-import cv2
+import cv2 as cv
 from skimage.morphology import convex_hull_image
 import numpy as np
 from matplotlib import pyplot as plt
@@ -23,31 +23,17 @@ Returns:
     * chull: image of the mask after applied the convex hull - boolean type matrix
 """
 
-def get_lung_mask(nodule_image):
-    # global thresholding
-    ret1,th1 = cv2.threshold(nodule_image,0.57,255,cv2.THRESH_BINARY) # binary treshold
+def get_lung_mask(nodule):
+    nodule_mask = cv.inRange(nodule, 0, 0.57)
+    kernel_ellipse = cv.getStructuringElement(cv.MORPH_ELLIPSE, (3,3))
+    mask = cv.medianBlur(nodule_mask,3)
+    dilated_mask = cv.dilate(mask,kernel_ellipse,iterations = 1)
+    erode_mask = cv.erode(dilated_mask,kernel_ellipse,iterations = 3)    
+    hull = convex_hull_image(erode_mask)
     
-    th1=(255-th1) #invert image
+    return hull
 
-    #morphoogic operation - closing and opening
-    kernel = np.ones((3,3),np.uint8)
-    mask = cv2.dilate(th1,kernel,iterations = 3)
-    mask = cv2.erode(mask,kernel,iterations = 3)
-    
-    mask= cv2.erode(mask,kernel,iterations = 2)
-    mask=cv2.dilate(mask,kernel,iterations = 2)
-    
-    chull = convex_hull_image(mask)
-  
-    return chull
 
-train_slices, train_slices_masks, y_train, test_slices, test_slices_masks, y_test , val_slices, val_slices_masks, y_val = getData()
-
-for nodule, mask in zip(train_slices,train_slices_masks):
-    convex = get_lung_mask(nodule)
-    #showImages([nodule], [mask],overlay = False) 
-    #plt.imshow(convex)
-    #plt.show()
 """
 show_lung_mask
 ===============
