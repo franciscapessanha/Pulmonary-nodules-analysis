@@ -63,8 +63,8 @@ Arguments:
 
 def showImages(nodules, masks, nodules_and_mask = True, overlay = True):
     plot_args={}
-    plot_args['vmin']=0
-    plot_args['vmax']=1
+    #plot_args['vmin']=0
+    #plot_args['vmax']=1
     plot_args['cmap']='gray'
     
     if nodules_and_mask:

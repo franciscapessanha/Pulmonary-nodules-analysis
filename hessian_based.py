@@ -195,7 +195,7 @@ def getVmed(eig_nodules):
 # 3.4 Run and plot all
 # =====================
     
-
+"""
 train_slices, train_slices_masks, y_train, test_slices, test_slices_masks, y_test , val_slices, val_slices_masks, y_val = getData()
     
 smooth_nodules = gaussianSmooth(train_slices)
@@ -209,3 +209,4 @@ for i in range(len(train_slices)):
     plotImage(SI_nodules[i])
     plotImage(CV_nodules[i])
     plotImage(Vmed_nodules[i])
+"""
