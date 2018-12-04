@@ -140,7 +140,7 @@ def getSI(eig_nodules):
 # ======================== 
 #we will compute the curvedness manually
 
-def getCV(max_nodules):
+def getCV(eig_nodules):
     CV_nodules = []
     for all_sigmas_nodule in eig_nodules:
         all_CV = []
@@ -166,7 +166,7 @@ def getCV(max_nodules):
 # 3.3 Central adaptive miedialness approach 
 # ==========================================
 
-def getVmed(max_nodules):     
+def getVmed(eig_nodules):     
     Vmed_nodules = []
     for all_sigmas_nodule in eig_nodules:
         all_Vmed = []
@@ -194,6 +194,7 @@ def getVmed(max_nodules):
 
 # 3.4 Run and plot all
 # =====================
+    
 
 train_slices, train_slices_masks, y_train, test_slices, test_slices_masks, y_test , val_slices, val_slices_masks, y_val = getData()
     
