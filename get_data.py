@@ -230,9 +230,5 @@ def getImages(x_train, masks_train, x_test, masks_test, x_val, masks_val):
     for n in range(len(val_nods)):
         val_slices.append(getMiddleSlice(val_nods[n]))
         val_slices_masks.append(getMiddleSlice(val_masks[n]))
-        
-    #train_slices = (train_slices - np.mean(train_slices,axis= 0)) / (np.std(train_slices, axis = 0))
-    #test_slices = (test_slices - np.mean(train_slices,axis= 0)) / (np.std(train_slices, axis = 0))
-    #val_slices = (val_slices - np.mean(train_slices,axis= 0)) / (np.std(train_slices, axis = 0))
-    
+
     return train_slices, train_slices_masks, test_slices, test_slices_masks, val_slices, val_slices_masks
