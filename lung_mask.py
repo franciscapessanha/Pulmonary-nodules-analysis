@@ -11,6 +11,10 @@ import numpy as np
 from matplotlib import pyplot as plt
 from get_data import getData
 from show_images import showImages
+
+#MUDAR ESTES NOMES
+#=================
+
 """
 get_lung_mask
 ===============

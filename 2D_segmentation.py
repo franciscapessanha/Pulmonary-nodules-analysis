@@ -10,15 +10,6 @@ import numpy as np
 from lung_mask import get_lung_mask
 from hessian_based import getEigNodules, gaussianSmooth, getSI, getCV, getVmed
 from sklearn.svm import SVC
-from sklearn.model_selection import cross_val_score
-
-train_slices, train_slices_masks, y_train, test_slices, test_slices_masks, y_test , val_slices, val_slices_masks, y_val = getData()
-
-
-#%%
-samples = [[],[],[],[]]
-labels = []
-
 
 def separateFeatures(sample_features, sample, mask):
    features_n = []
@@ -41,9 +32,8 @@ def getIndexes(features_n, features_nn):
 
       
 def getFeaturePoints(features_n, features_nn, number_of_pixel):
-    
     i_nodules, i_non_nodules = getIndexes(features_n,features_nn)
-    
+
     i_n = [i_nodules[j] for j in range(number_of_pixel)]
     i_nn = [i_non_nodules[j] for j in range(number_of_pixel)]
     
@@ -54,44 +44,7 @@ def getFeaturePoints(features_n, features_nn, number_of_pixel):
     labels = np.concatenate((np.ones(np.shape(nodule_points)[0]),np.zeros(np.shape(non_nodule_points)[0])), axis = 0)
     return points, labels
 
-def mask_gt(train_slices, train_slices_masks):
-    #aplicar a mascara do pulmao as imagens 
-    lung_px=[]
-    gt_px=[]
-    t_p=[]
-    f_n=[]
-    
-    for i in range(len(train_slices)):
-        t_positive = 0
-        f_negative = 0
-        lung_mask = get_lung_mask(train_slices[i])
-        gt_px.append(train_slices_masks[i][lung_mask==0])
-        
-        gt_new_px=[]
-        
-        if i == 0:
-            gt_new_px = gt_px[i]
-        else:
-            gt_new_px = np.concatenate((gt_new_px, gt_px[i]), axis = 0)
-        
-        for j in range(len(gt_new_px)):
-                        
-            if gt_new_px[j]==1:
-                f_negative = f_negative+1
-            else:
-                t_positive = t_positive+1
-                
-        t_p.append(t_positive)  
-        f_n.append(f_negative)
-        
-        tp = sum(t_p)
-        fn = sum(f_n)
-        
-    return(tp,fn)
-    
-
-def mainSegmentation(train_slices, train_slices_masks, number_of_pixel):
-    
+def getTrainingSet(train_slices, train_slices_masks, number_of_pixel):
     smooth_img = gaussianSmooth(train_slices)
     eigen_nodules = getEigNodules(smooth_img)
     shape_index = getSI (eigen_nodules)
@@ -114,49 +67,58 @@ def mainSegmentation(train_slices, train_slices_masks, number_of_pixel):
             
     return points, labels
 
-def input_set(val_slices, val_slices_masks):
-
-    smooth_img = gaussianSmooth(val_slices)
+def getInputSet(nodules, masks):
+    smooth_img = gaussianSmooth(nodules)
     eigen_nodules = getEigNodules(smooth_img)
-    shape_index = getSI (eigen_nodules)
+    SI_nodules = getSI(eigen_nodules)
     CV_nodules = getCV(eigen_nodules)
     Vmed_nodules = getVmed(eigen_nodules)
     
-    val_new_slices = []
-    shape_index_new_mask = []
-    CV_mask_new = []
-    Vmed_mask_new = []
-    val_masks_new_slices = []
+    masked_nodules = []
+    masked_SI = []
+    masked_CV = []
+    masked_Vmed = []
+    masked_gt = []
     
-    for i in range(len(shape_index)):
-        lung_mask = get_lung_mask(val_slices[i])
-        val_new_slices.append(val_slices[i][lung_mask==1])
-        shape_index_new_mask.append(shape_index[i][lung_mask==1])
-        CV_mask_new.append(CV_nodules[i][lung_mask==1])
-        Vmed_mask_new.append(Vmed_nodules[i][lung_mask==1])
-        val_masks_new_slices.append(val_slices_masks[i][lung_mask==1])
+    for nodule, si, cv, v_med, mask in zip(nodules, SI_nodules, CV_nodules, Vmed_nodules, masks) :
+        lung_mask = get_lung_mask(nodule)
+        masked_nodules.append(nodule[lung_mask == 1])
+        masked_SI.append(si[lung_mask == 1])
+        masked_CV.append(cv[lung_mask == 1])
+        masked_Vmed.append(v_med[lung_mask == 1])
+        masked_gt.append(mask[lung_mask == 1])
         
-    for i in(range(len(shape_index_new_mask))):
+    for i in(range(len(masked_nodules))):
         if i == 0:
-            val_slices_px = val_new_slices[i]
-            si_px = shape_index_new_mask[i]
-            cv_px = CV_mask_new[i]
-            Vmed_px = Vmed_mask_new[i]
-            mask_px = val_masks_new_slices[i]
+            nodules_px = masked_nodules[i]
+            si_px = masked_SI[i]
+            cv_px = masked_CV[i]
+            Vmed_px = masked_Vmed[i]
+            mask_px = masked_gt[i]
         else:
-            val_slices_px= np.concatenate((val_slices_px, val_new_slices[i]), axis = 0)
-            si_px = np.concatenate((si_px, shape_index_new_mask[i]), axis = 0)
-            cv_px = np.concatenate((cv_px , CV_mask_new[i]), axis = 0)
-            Vmed_px = np.concatenate((Vmed_px, Vmed_mask_new[i]), axis = 0)
-            mask_px = np.concatenate((mask_px,val_masks_new_slices[i]), axis = 0)
-        
-
-    val_set = np.asarray((val_slices_px, si_px, cv_px, Vmed_px))
-    val_set = np.transpose(val_set)
+            nodules_px= np.concatenate((nodules_px, masked_nodules[i]), axis = 0)
+            si_px = np.concatenate((si_px, masked_SI[i]), axis = 0)
+            cv_px = np.concatenate((cv_px , masked_CV[i]), axis = 0)
+            Vmed_px = np.concatenate((Vmed_px, masked_Vmed[i]), axis = 0)
+            mask_px = np.concatenate((mask_px,masked_gt[i]), axis = 0)
     
-    return(val_set, mask_px)
+    input_set = np.transpose(np.asarray((nodules_px, si_px, cv_px, Vmed_px)))
+    
+    return (input_set , mask_px)
    
-def confusion_matrix(predictions, labels, val_slices, val_slices_masks):
+def outerLungPrediction(nodules, masks):
+    labels_outer_lung = []
+    predictions_outer_lung = []
+    for nodule, mask in zip(nodules, masks):
+        lung_mask = get_lung_mask(nodule)
+        
+        labels_outer_lung.append(mask[lung_mask==0])
+        predictions_outer_lung.append(np.zeros(np.shape(nodule[lung_mask==0])))
+    
+    return np.hstack(predictions_outer_lung), np.hstack(labels_outer_lung)
+
+
+def confusionMatrix(predictions, labels):
     true_positives = 0
     false_negatives = 0
     false_positives = 0
@@ -174,42 +136,34 @@ def confusion_matrix(predictions, labels, val_slices, val_slices_masks):
             elif predictions[i] == 0.0:
                 false_negatives += 1
                 
-    tp, fn = mask_gt(val_slices, val_slices_masks)
+    return np.asarray([[true_positives, false_negatives], [false_positives, true_negatives]])
+
+
+def getPerformanceMetrics(predictions_lung, labels_lung, predictions_outer_lung, labels_outer_lung):
+    c_matrix_lung = confusionMatrix(predictions_lung, labels_lung)
+    c_matrix_outer_lung = confusionMatrix(predictions_outer_lung, labels_outer_lung)
     
-    true_positives = true_positives + tp
-    false_negatives = false_negatives + fn
-    
+    true_positives = c_matrix_lung[0,0] + c_matrix_outer_lung[0,0]
+    false_negatives = c_matrix_lung[0,1] + c_matrix_outer_lung[0,1]
+    false_positives = c_matrix_lung[1,0] + c_matrix_outer_lung[1,0]
+    true_negatives = c_matrix_lung[1,1] + c_matrix_outer_lung[1,1]
+ 
     dice = (2*true_positives/(false_positives+false_negatives+(2*true_positives)))
-    
     jaccard = (true_positives)/(true_positives+false_positives+false_negatives)
-    
     matrix = np.asarray([[true_positives, false_negatives], [false_positives, true_negatives]])
     
     return dice, jaccard, matrix
 
 
-#%%
+train_slices, train_slices_masks, y_train, test_slices, test_slices_masks, y_test , val_slices, val_slices_masks, y_val = getData()
 
-points, labels = mainSegmentation(train_slices, train_slices_masks, 10)
-
-model = SVC(decision_function_shape='ovo', class_weight='balanced')
+points, labels = getTrainingSet(train_slices, train_slices_masks, 10)
+model = SVC(gamma = 'scale', decision_function_shape='ovo', class_weight='balanced')
 model.fit(points,labels)
-    
-val_set, mask_px = input_set(test_slices, test_slices_masks)
 
-predictions = model.predict(val_set)
+val_lung, labels_lung  = getInputSet(val_slices, val_slices_masks)
+predictions_lung = model.predict(val_lung)
 
-dice, jaccard, conf_matrix = confusion_matrix(predictions, mask_px, test_slices, test_slices_masks)
-print(conf_matrix, dice, jaccard)
+predictions_outer_lung, labels_outer_lung = outerLungPrediction(val_slices, val_slices_masks)
+dice, jaccard, matrix = getPerformanceMetrics(predictions_lung, labels_lung, predictions_outer_lung, labels_outer_lung)
 
-
-
-data = train_slices+val_slices
-labels = train_slices_masks + val_slices_masks
-
-cross_set, cross_mask = input_set(data, labels)
-
-#new_shape_data = np.reshape(data, (5814,51))
-#new_shape_labels = np.reshape(labels, (5814,51))
-
-scores = cross_val_score(model, cross_set, cross_mask, cv=2)
