@@ -21,7 +21,7 @@ from sklearn.neighbors import KNeighborsClassifier
 # ====================================================================
 
 def gaussianSmooth(nodules):
-    sigma = [0.5, 1, 1.5, 2, 2.5, 3, 3.5]
+    sigma = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
     smooth_nodules = []
     for nodule in nodules:
         smooth_node = []

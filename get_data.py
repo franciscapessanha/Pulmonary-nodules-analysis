@@ -49,7 +49,6 @@ def findExtension(directory,extension='.npy'):
     full_path.sort()
     return files, full_path
 
-
 """
 Load Data
 ================
@@ -112,7 +111,6 @@ def splitData(data, labels):
     val =[x_val, y_val]
    
     return train, test, val
-
 
 def splitTextures(nodules, metadata):
     non_solid = []
@@ -188,7 +186,7 @@ def getSets(nodules, metadata, masks, mode):
         x_s = np.concatenate((s_train[0],s_val[0]), axis = 0)
         y_s = np.concatenate((s_train[1],s_val[1]), axis = 0)
         
-        n_splits = 10
+        n_splits = 5
        
         all_x_train_ns = []
         all_x_val_ns = []

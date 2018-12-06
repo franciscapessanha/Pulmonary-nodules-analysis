@@ -11,6 +11,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from get_data import getData
 from show_images import showImages
+from skimage.measure import label, regionprops
 
 #MUDAR ESTES NOMES
 #=================
@@ -27,16 +28,15 @@ Returns:
     * chull: image of the mask after applied the convex hull - boolean type matrix
 """
 
-def get_lung_mask(nodule):
+def getLungMask(nodule):
     nodule_mask = cv.inRange(nodule, 0, 0.57)
     kernel_ellipse = cv.getStructuringElement(cv.MORPH_ELLIPSE, (3,3))
     mask = cv.medianBlur(nodule_mask,3)
     dilated_mask = cv.dilate(mask,kernel_ellipse,iterations = 1)
     erode_mask = cv.erode(dilated_mask,kernel_ellipse,iterations = 3)    
-    hull = convex_hull_image(erode_mask)
-    
+    hull = convex_hull_image(erode_mask)      
+        
     return hull
-
 
 """
 show_lung_mask
