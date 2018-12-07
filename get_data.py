@@ -177,8 +177,8 @@ def getSets(nodules, metadata, masks, mode):
         masks_val = assignMasks(x_val, masks) 
 
     elif mode == "cross_val":
-        x_ns = np.concatenate((s_train[0],s_val[0]), axis = 0)
-        y_ns = np.concatenate((s_train[1],s_val[1]), axis = 0)
+        x_ns = np.concatenate((ns_train[0],ns_val[0]), axis = 0)
+        y_ns = np.concatenate((ns_train[1],ns_val[1]), axis = 0)
         
         x_ss = np.concatenate((ss_train[0],ss_val[0]), axis = 0)
         y_ss = np.concatenate((ss_train[1],ss_val[1]), axis = 0)

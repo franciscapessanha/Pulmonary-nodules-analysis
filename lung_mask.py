@@ -50,7 +50,7 @@ Arguments:
 Returns:
     void
 """
-def show_lung_mask(original, chull):
+def showLungMask(original, chull):
     fig, axes = plt.subplots(1, 2, figsize=(8, 4))
     ax = axes.ravel()
 

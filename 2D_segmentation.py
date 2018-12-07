@@ -186,11 +186,12 @@ def getPerformanceMetrics(predictions_lung, labels_lung, predictions_outer_lung,
     
     return dice, jaccard, matrix
 
-all_train_slices, all_train_slices_masks, all_y_train, test_slices, test_slices_masks, y_test , all_val_slices, all_val_slices_masks, y_val = getData("cross_val")
 
+#train_slices, train_slices_masks, y_train, test_slices, test_slices_masks, y_test , val_slices, val_slices_masks, y_val = getData()
+all_train_slices, all_train_slices_masks, all_y_train, test_slices, test_slices_masks, y_test , all_val_slices, all_val_slices_masks, all_y_val = getData("cross_val")
 for train_slices, train_slices_masks, val_slices, val_slices_masks in zip(all_train_slices, all_train_slices_masks, all_val_slices, all_val_slices_masks):
     print("SVM \n=======")
-    points, labels, mean_int, std_int, mean_si, std_si, mean_cv, std_cv, mean_vmed, std_vmed = getTrainingSet(train_slices, train_slices_masks, 0.1)
+    points, labels, mean_int, std_int, mean_si, std_si, mean_cv, std_cv, mean_vmed, std_vmed = getTrainingSet(train_slices, train_slices_masks, 0.15)
     val_lung, labels_lung  = getInputSet(val_slices, val_slices_masks, mean_int, std_int, mean_si, std_si, mean_cv, std_cv, mean_vmed, std_vmed)
     
     model_SVM = SVC(kernel = 'rbf', random_state = 1,gamma='auto')
@@ -200,6 +201,21 @@ for train_slices, train_slices_masks, val_slices, val_slices_masks in zip(all_tr
     predictions_outer_lung, labels_outer_lung = outerLungPrediction(val_slices, val_slices_masks)
     dice, jaccard, matrix = getPerformanceMetrics(predictions_lung, labels_lung, predictions_outer_lung, labels_outer_lung)
     print("The dice value is %.2f and the jaccard value is %.2f" % (dice, jaccard))
+
+print("SVM test \n=======")
+points, labels, mean_int, std_int, mean_si, std_si, mean_cv, std_cv, mean_vmed, std_vmed = getTrainingSet(train_slices, train_slices_masks, 0.15)
+test_lung, labels_lung  = getInputSet(test_slices, test_slices_masks, mean_int, std_int, mean_si, std_si, mean_cv, std_cv, mean_vmed, std_vmed)
+
+model_SVM = SVC(kernel = 'rbf', random_state = 1,gamma='auto')
+model_SVM.fit(points,labels)
+predictions_lung = model_SVM.predict(test_lung)
+    
+predictions_outer_lung, labels_outer_lung = outerLungPrediction(test_slices, test_slices_masks)
+dice, jaccard, matrix = getPerformanceMetrics(predictions_lung, labels_lung, predictions_outer_lung, labels_outer_lung)
+print("The dice value is %.2f and the jaccard value is %.2f" % (dice, jaccard))
+
+
+"""
     for i in [9,11,13,15]:
         print("K = %.0f \n=======" % i)
         
@@ -212,4 +228,4 @@ for train_slices, train_slices_masks, val_slices, val_slices_masks in zip(all_tr
         predictions_outer_lung, labels_outer_lung = outerLungPrediction(val_slices, val_slices_masks)
         dice, jaccard, matrix = getPerformanceMetrics(predictions_lung, labels_lung, predictions_outer_lung, labels_outer_lung)
         print("The dice value is %.2f and the jaccard value is %.2f" % (dice, jaccard))
-
+"""
