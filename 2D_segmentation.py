@@ -60,23 +60,14 @@ def normalizeImages(train_images):
     return mean, std
 
 def getTrainingSet(train_slices, train_slices_masks, number_of_pixel):
-    smooth_img = gaussianSmooth(train_slices)
-    eigen_nodules = getEigNodules(smooth_img)
-    
     mean_int, std_int = normalizeImages(train_slices)
     norm_slices = [(nodule - mean_int)/std_int for nodule in train_slices]
     
+    smooth_img = gaussianSmooth(norm_slices)
+    eigen_nodules = getEigNodules(smooth_img)
     SI_nodules = getSI (eigen_nodules)
-    mean_si, std_si = normalizeImages(SI_nodules)
-    SI_nodules = [(si_nodule - mean_si)/std_si for si_nodule in  SI_nodules]
-    
     CV_nodules = getCV(eigen_nodules)
-    mean_cv, std_cv = normalizeImages(CV_nodules)
-    CV_nodules = [(cv_nodule - mean_cv)/std_cv for cv_nodule in  CV_nodules]
-    
     Vmed_nodules = getVmed(eigen_nodules)
-    mean_vmed, std_vmed = normalizeImages(Vmed_nodules)
-    Vmed_nodules = [(vmed_nodule - mean_vmed)/std_vmed for vmed_nodule in  Vmed_nodules]
     
     for i in range(len(train_slices)):
         sample_features = [norm_slices[i], SI_nodules[i], CV_nodules[i], Vmed_nodules[i]]
@@ -92,20 +83,17 @@ def getTrainingSet(train_slices, train_slices_masks, number_of_pixel):
             points = np.concatenate((points, p), axis = 0)
             labels = np.concatenate((labels, l), axis = 0)
             
-    return points, labels, mean_int, std_int, mean_si, std_si, mean_cv, std_cv, mean_vmed, std_vmed
+    return points, labels, mean_int, std_int
 
-def getInputSet(nodules, masks,mean_int, std_int,  mean_si, std_si, mean_cv, std_cv, mean_vmed, std_vmed):
-    smooth_img = gaussianSmooth(nodules)
+def getInputSet(nodules, masks,mean_int, std_int):
+    norm_nodules = [(nodule - mean_int)/std_int for nodule in nodules]
+    smooth_img = gaussianSmooth(norm_nodules)
     eigen_nodules = getEigNodules(smooth_img)
     SI_nodules = getSI(eigen_nodules)
     CV_nodules = getCV(eigen_nodules)
     Vmed_nodules = getVmed(eigen_nodules)
     
-    norm_nodules = [(nodule - mean_int)/std_int for nodule in nodules]
-    SI_nodules = [(si_nodule - mean_si)/std_si for si_nodule in  SI_nodules]
-    CV_nodules = [(cv_nodule - mean_cv)/std_cv for cv_nodule in  CV_nodules]
-    Vmed_nodules = [(vmed_nodule - mean_vmed)/std_vmed for vmed_nodule in  Vmed_nodules]
-    
+
     masked_nodules = []
     masked_SI = []
     masked_CV = []
@@ -191,8 +179,8 @@ def getPerformanceMetrics(predictions_lung, labels_lung, predictions_outer_lung,
 all_train_slices, all_train_slices_masks, all_y_train, test_slices, test_slices_masks, y_test , all_val_slices, all_val_slices_masks, all_y_val = getData("cross_val")
 for train_slices, train_slices_masks, val_slices, val_slices_masks in zip(all_train_slices, all_train_slices_masks, all_val_slices, all_val_slices_masks):
     print("SVM \n=======")
-    points, labels, mean_int, std_int, mean_si, std_si, mean_cv, std_cv, mean_vmed, std_vmed = getTrainingSet(train_slices, train_slices_masks, 0.15)
-    val_lung, labels_lung  = getInputSet(val_slices, val_slices_masks, mean_int, std_int, mean_si, std_si, mean_cv, std_cv, mean_vmed, std_vmed)
+    points, labels, mean_int, std_int = getTrainingSet(train_slices, train_slices_masks, 0.10 )
+    val_lung, labels_lung  = getInputSet(val_slices, val_slices_masks, mean_int, std_int)
     
     model_SVM = SVC(kernel = 'rbf', random_state = 1,gamma='auto')
     model_SVM.fit(points,labels)
@@ -203,8 +191,8 @@ for train_slices, train_slices_masks, val_slices, val_slices_masks in zip(all_tr
     print("The dice value is %.2f and the jaccard value is %.2f" % (dice, jaccard))
 
 print("SVM test \n=======")
-points, labels, mean_int, std_int, mean_si, std_si, mean_cv, std_cv, mean_vmed, std_vmed = getTrainingSet(train_slices, train_slices_masks, 0.15)
-test_lung, labels_lung  = getInputSet(test_slices, test_slices_masks, mean_int, std_int, mean_si, std_si, mean_cv, std_cv, mean_vmed, std_vmed)
+points, labels, mean_int, std_int= getTrainingSet(train_slices, train_slices_masks, 0.10)
+test_lung, labels_lung  = getInputSet(test_slices, test_slices_masks, mean_int, std_int)
 
 model_SVM = SVC(kernel = 'rbf', random_state = 1,gamma='auto')
 model_SVM.fit(points,labels)
@@ -216,6 +204,11 @@ print("The dice value is %.2f and the jaccard value is %.2f" % (dice, jaccard))
 
 
 """
+reshape(n_features, 51x51) em vez de concatenação!
+==================================================
+Guardar matriz de caracteristicas e apagar nodulos!
+
+
     for i in [9,11,13,15]:
         print("K = %.0f \n=======" % i)
         

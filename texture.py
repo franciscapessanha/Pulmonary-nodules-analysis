@@ -47,16 +47,10 @@ def calcIntensityFeatures(nodules, masks):
     
 
 def getIntensityFeatures(train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks):
-    
-    mean_int, std_int = normalizeIntensity(train_slices, train_slices_masks)
 
-    train_nodules = [(nodule - mean_int)/std_int for nodule in train_slices]
-    val_nodules = [(nodule - mean_int)/std_int for nodule in val_slices]
-    test_nodules = [(nodule - mean_int)/std_int for nodule in test_slices]
-    
-    train_int_features = np.vstack(calcIntensityFeatures(train_nodules, train_slices_masks))
-    val_int_features = np.vstack(calcIntensityFeatures(val_nodules, val_slices_masks))
-    test_int_features = np.vstack(calcIntensityFeatures(test_nodules, test_slices_masks))
+    train_int_features = np.vstack(calcIntensityFeatures(train_slices, train_slices_masks))
+    val_int_features = np.vstack(calcIntensityFeatures(val_slices, val_slices_masks))
+    test_int_features = np.vstack(calcIntensityFeatures(test_slices, test_slices_masks))
     
     return train_int_features, val_int_features, test_int_features
 
@@ -81,13 +75,6 @@ def getShapeFeatures(train_slices_masks,val_slices_masks, test_slices_masks):
     train_shape_features = np.vstack(calcShapeFeatures(train_slices_masks))
     val_shape_features = np.vstack(calcShapeFeatures(val_slices_masks))
     test_shape_features = np.vstack(calcShapeFeatures(test_slices_masks))
-    
-    mean_shape = np.mean(train_shape_features, axis=0)
-    std_shape = np.std(train_shape_features, axis=0)
-
-    train_shape_features = np.transpose([(train_shape_features[:,i] - mean_shape[i])/std_shape[i] for i in range(len(mean_shape))])
-    val_shape_features = np.transpose([(val_shape_features[:,i] - mean_shape[i])/std_shape[i] for i in range(len(mean_shape))])
-    test_shape_features = np.transpose([(test_shape_features[:,i] - mean_shape[i])/std_shape[i] for i in range(len(mean_shape))])
     
     return train_shape_features, val_shape_features, test_shape_features
   
@@ -118,13 +105,6 @@ def getLBPFeatures(train_slices, train_slices_masks, val_slices, val_slices_mask
     val_lbp = calcLBP(val_slices, val_slices_masks, n_points, radius)
     test_lbp = calcLBP(test_slices, test_slices_masks, n_points, radius)
 
-    mean_lbp = np.mean(np.hstack(train_lbp))
-    std_lbp = np.std(np.hstack(train_lbp))
-    
-    train_lbp = [(value - mean_lbp)/std_lbp for value in train_lbp]
-    val_lbp = [(value - mean_lbp)/std_lbp for value in val_lbp]
-    test_lbp = [(value - mean_lbp)/std_lbp for value in test_lbp]
-    
     max_ = np.max([np.max(np.hstack(train_lbp)), np.max(np.hstack(val_lbp)), np.max(np.hstack(test_lbp))])
     min_ = np.min([np.min(np.hstack(train_lbp)), np.min(np.hstack(val_lbp)), np.min(np.hstack(test_lbp))])
     
@@ -227,8 +207,27 @@ def getPrediction(train_features, y_train, val_features, y_val):
 
 
 #train_slices, train_slices_masks, y_train, test_slices, test_slices_masks, y_test , val_slices, val_slices_masks, y_val = getData()
+
+
+train_int_features, val_int_features, test_int_features = getIntensityFeatures(train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks)
+plt.plot(train_int_features[y_train==0,0], 'ro')
+plt.plot(train_int_features[y_train==1,0], 'bo')
+plt.plot(train_int_features[y_train==2,0], 'co')
+
+plt.title("Training set")
+plt.show()
+#plt.scatter(pca_val[:,0], pca_val[:,1], c= y_val)
+#plt.title("Validation set")
+#plt.show()
+
+
 all_train_slices, all_train_slices_masks, all_y_train, test_slices, test_slices_masks, y_test , all_val_slices, all_val_slices_masks, all_y_val = getData("cross_val")
 for train_slices, train_slices_masks, y_train, val_slices, val_slices_masks, y_val in zip(all_train_slices, all_train_slices_masks, all_y_train, all_val_slices, all_val_slices_masks, all_y_val): 
+    
+    mean_int, std_int = normalizeIntensity(train_slices, train_slices_masks)
+    train_slices = (train_slices - mean_int)/std_int
+    val_slices = (val_slices - mean_int)/std_int
+    test_slices = (test_slices - mean_int)/std_int
     
     train_int_features, val_int_features, test_int_features = getIntensityFeatures(train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks)
     train_shape_features, val_shape_features, test_shape_features = getShapeFeatures(train_slices_masks, val_slices_masks,test_slices_masks)
@@ -255,5 +254,5 @@ for train_slices, train_slices_masks, y_train, val_slices, val_slices_masks, y_v
     prediction_all = getPrediction(train_features, y_train, val_features, y_val)
     print("Test \n======")
     prediction_all = getPrediction(train_features, y_train, test_features, y_test)
-    
+ 
     
