@@ -20,6 +20,7 @@ from skimage.filters import gabor, gabor_kernel
 import cv2 as cv
 from sklearn import linear_model 
 from sklearn.neighbors import KNeighborsClassifier
+from skimage.measure import label, regionprops
 
 """
 Intensity Features
@@ -33,6 +34,40 @@ def normalizeIntensity(train_slices, train_slices_masks):
     mean_int = np.mean(all_px)
     std_int = np.std(all_px)
     return mean_int, std_int
+
+def calcCircularFeatures(nodules, masks):
+    circular_features = []
+    i = 0
+    for nodule, mask in zip(nodules, masks):
+        print(i)
+        circle_0 = np.zeros(np.shape(nodule), np.uint8)
+        circle_1 = np.zeros(np.shape(nodule), np.uint8)
+        circle_2 = np.zeros(np.shape(nodule), np.uint8)
+        region = label(mask)
+        props = regionprops(region)
+        minor_axis = props[0]['minor_axis_length']
+        centroid = props[0]['centroid']
+
+        cv.circle(circle_0, (int(centroid[0]), int(centroid[1])),int(minor_axis*0.25),1, -1)
+        cv.circle(circle_1, (int(centroid[0]), int(centroid[1])),int(minor_axis*0.50),1, -1)
+        cv.circle(circle_2, (int(centroid[0]), int(centroid[1])),int(minor_axis*0.8),1, -1)
+        
+        
+        mean_0 = np.mean(nodule[circle_0 == 1])
+        mean_1 = np.mean(nodule[circle_1 == 1])
+        mean_2 = np.mean(nodule[circle_2 == 1])
+        
+        std_0 = np.std(nodule[circle_0 == 1])
+        std_1 = np.std(nodule[circle_1 == 1])
+        std_2 = np.std(nodule[circle_2 == 1])
+        
+        #ent_0 = entropy(nodule/3,disk(5))
+        #ent_1 = entropy(nodule/3,disk(5))
+        #ent_2 = entropy(nodule/3,disk(5))
+        
+        circular_features.append([mean_0,mean_1, mean_2])
+        i += 1
+    return circular_features
 
 def calcIntensityFeatures(nodules, masks):
     intensity_features = []
@@ -53,6 +88,12 @@ def getIntensityFeatures(train_slices, train_slices_masks, val_slices, val_slice
     test_int_features = np.vstack(calcIntensityFeatures(test_slices, test_slices_masks))
     return train_int_features, val_int_features, test_int_features
 
+def getCircularFeatures(train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks):
+    train_circ_features = np.vstack(calcCircularFeatures(train_slices, train_slices_masks))
+    val_circ_features = np.vstack(calcCircularFeatures(val_slices, val_slices_masks))
+    test_circ_features = np.vstack(calcCircularFeatures(test_slices, test_slices_masks))
+    
+    return train_circ_features, val_circ_features, test_circ_features
 """
 Shape Features
 ===================
@@ -168,7 +209,7 @@ SVM, PCA and plot
 ===================
 """
 def getPrediction(train_features, y_train, val_features, y_val):
-    modelSVM = SVC(kernel = "rbf", gamma = 'auto',probability=True)
+    modelSVM = SVC(kernel = "rbf", gamma = 'auto',probability=True, class_weight = "balanced")
     modelSVM.fit(train_features, y_train)
     predictSVM = modelSVM.predict(val_features)
 
@@ -190,9 +231,11 @@ val_slices = (val_slices - mean_int)/std_int
 test_slices = (test_slices - mean_int)/std_int
 
 train_int_features, val_int_features, test_int_features = getIntensityFeatures(train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks)
-train_shape_features, val_shape_features, test_shape_features = getShapeFeatures(train_slices_masks, val_slices_masks,test_slices_masks)
-train_lbp_features, val_lbp_features, test_lbp_features = getLBPFeatures(train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks)
+train_circ_features, val_circ_features, test_circ_features = getCircularFeatures(train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks)
+#train_shape_features, val_shape_features, test_shape_features = getShapeFeatures(train_slices_masks, val_slices_masks,test_slices_masks)
+#train_lbp_features, val_lbp_features, test_lbp_features = getLBPFeatures(train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks)
 #train_gabor_features, val_gabor_features, test_gabor_features = GetGaborFilter(train_slices, val_slices, test_slices)
+
 
 print("Intensity Features only \n=======================")
 int_train_scaled = StandardScaler().fit_transform(train_int_features)
@@ -202,17 +245,39 @@ prediction_int = getPrediction(int_train_scaled , y_train, int_val_scaled , y_va
 pca = PCA(n_components=2)
 pca_train = pca.fit_transform(train_int_features)
 
+
+
+plt.plot(pca_train[y_train==0,0], pca_train[y_train==0,1],'ro')
+plt.plot(pca_train[y_train==1,0], pca_train[y_train==1,1], 'bo')
+plt.plot(pca_train[y_train==2,0], pca_train[y_train==2,1],'co')
+plt.show()
+
+plt.plot(train_int_features[y_train==0,2],'ro')
+plt.plot(train_int_features[y_train==1,2], 'bo')
+plt.plot(train_int_features[y_train==2,2],'co')
+plt.show()
+
+
+print("Circular Features only \n=======================")
+circ_train_scaled = StandardScaler().fit_transform(train_circ_features)
+circ_val_scaled = StandardScaler().fit_transform(val_circ_features)
+
+prediction_circ = getPrediction(circ_train_scaled , y_train, circ_val_scaled , y_val)
+#pca = PCA(n_components=2)
+#pca_train = pca.fit_transform(train_circ_features)
+
 """
 plt.plot(pca_train[y_train==0,0], pca_train[y_train==0,1],'ro')
 plt.plot(pca_train[y_train==1,0], pca_train[y_train==1,1], 'bo')
 plt.plot(pca_train[y_train==2,0], pca_train[y_train==2,1],'co')
 plt.show()
 """
-plt.plot(train_int_features[y_train==0,2],'ro')
-plt.plot(train_int_features[y_train==1,2], 'bo')
-plt.plot(train_int_features[y_train==2,2],'co')
+plt.plot(train_circ_features[y_train==0,0], train_circ_features[y_train==0,2],'ro')
+plt.plot(train_circ_features[y_train==1,0], train_circ_features[y_train==1,2],'bo')
+plt.plot(train_circ_features[y_train==2,0],train_circ_features[y_train==2,2],'co')
 plt.show()
 
+"""
 print("Shape Features only \n=======================")
 int_train_scaled = StandardScaler().fit_transform(train_shape_features)
 int_val_scaled = StandardScaler().fit_transform(val_shape_features)
@@ -227,6 +292,7 @@ plt.plot(pca_train[y_train==2,0], pca_train[y_train==2,1],'co')
 plt.show()
 
 """
+"""
 print("Gabor Features only \n=======================")
 prediction_gb = getPrediction(train_gabor_features, y_train, val_gabor_features, y_val)
 
@@ -237,7 +303,7 @@ plt.plot(pca_train[y_train==0,0], pca_train[y_train==0,1],'ro')
 plt.plot(pca_train[y_train==1,0], pca_train[y_train==1,1], 'bo')
 plt.plot(pca_train[y_train==2,0], pca_train[y_train==2,1],'co')
 plt.show()
-"""
+
 
 print("LBP Features only \n=======================")
 prediction_lbp = getPrediction(train_lbp_features, y_train, val_lbp_features, y_val)
@@ -268,9 +334,8 @@ plt.plot(pca_train[y_train==1,0], pca_train[y_train==1,1], 'bo')
 plt.plot(pca_train[y_train==2,0], pca_train[y_train==2,1],'co')
 plt.show()
 
-#%%
 
-"""
+
 print("PCA\n=============")
 pca = PCA(n_components=10)
 pca_train = pca.fit_transform(train_features)
@@ -293,5 +358,4 @@ plt.plot(train_shape_features[y_train==1,0], 'bo')
 plt.plot(train_shape_features[y_train==2,0], 'co')
 plt.show()
 """
-
     
