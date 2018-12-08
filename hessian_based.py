@@ -1,27 +1,14 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Dec  1 15:56:01 2018
-
-@author: mariafranciscapessanha
-"""
-
-from get_data import getData
 import matplotlib.pyplot as plt
-import matplotlib.pyplot as mpimg
 import numpy as np
 from scipy.ndimage import gaussian_filter
 from skimage.feature import hessian_matrix, hessian_matrix_eigvals
-from skimage.feature import shape_index
-from show_images import showImages
-from sklearn.neighbors import KNeighborsClassifier
 
 
-# 1. Multiscale Gaussian smoothing using sigm in the range 0.5 to 3.5
+# Multiscale Gaussian smoothing using sigm in the range 0.5 to 3.5
 # ====================================================================
 
 def gaussianSmooth(nodules):
-    sigma = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
+    sigma = [0.5, 1, 1.5, 2, 2.5, 3, 3.5]
     smooth_nodules = []
     for nodule in nodules:
         smooth_node = []
@@ -107,8 +94,6 @@ def plotImage(image):
     plt.imshow(image, **plot_args)
     plt.show()
 
-#%%%
-
 def getSI(eig_nodules):
     SI_nodules = [] 
     
@@ -135,7 +120,6 @@ def getSI(eig_nodules):
     
     return SI_nodules
 
-#%%%
 # 3.2 Curvedness approach 
 # ======================== 
 #we will compute the curvedness manually
@@ -191,22 +175,3 @@ def getVmed(eig_nodules):
                 Vmed_nodule[i][j] = np.max(values)
         Vmed_nodules.append(Vmed_nodule)
     return Vmed_nodules
-
-# 3.4 Run and plot all
-# =====================
-    
-"""
-train_slices, train_slices_masks, y_train, test_slices, test_slices_masks, y_test , val_slices, val_slices_masks, y_val = getData()
-    
-smooth_nodules = gaussianSmooth(train_slices)
-eig_nodules = getEigNodules(smooth_nodules)
-SI_nodules = getSI(eig_nodules)
-CV_nodules = getCV(eig_nodules) 
-Vmed_nodules = getVmed(eig_nodules) 
-
-for i in range(len(train_slices)):
-    showImages([train_slices[i]], [train_slices_masks[i]],overlay = False)
-    plotImage(SI_nodules[i])
-    plotImage(CV_nodules[i])
-    plotImage(Vmed_nodules[i])
-"""

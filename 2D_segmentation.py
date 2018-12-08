@@ -1,27 +1,95 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Dec  4 19:01:46 2018
-
-@author: Margarida
-"""
 
 from get_data import getData
 import numpy as np
 from lung_mask import getLungMask
 from hessian_based import getEigNodules, gaussianSmooth, getSI, getCV, getVmed
 from sklearn.svm import SVC
-from sklearn.neighbors import KNeighborsClassifier
+
+"""
+Run
+===============================================================================
+"""
+
+def run(mode = "default"):
+    if mode == "default": 
+        train_x, train_masks, _, val_x, val_masks, _, test_x, test_masks, _ = getData()
+        get2DSegmentation(train_x, train_masks, val_x, val_masks, test_x, test_masks)
+        
+    elif mode == "cross_val":
+        cv_train_x, cv_train_masks, _, cv_val_x, cv_val_masks, _, test_x, test_masks, _ = getData("cross_val")
+        for train_x, train_masks, val_x, val_masks in zip(cv_train_x, cv_train_masks, cv_val_x, cv_val_masks):
+            get2DSegmentation(train_x, train_masks, val_x, val_masks, test_x, test_masks)
+            
+"""
+Get 2D Segmentation
+===============================================================================
+"""
+def get2DSegmentation(train_x, train_masks, val_x, val_masks, test_x, test_masks):
+    print("SVM \n=======")
+    points, labels, mean_int, std_int = getTrainingSet(train_x, train_masks, 0.10 )
+    val_lung, labels_lung  = getInputSet(val_x, val_masks, mean_int, std_int)
+    
+    model_SVM = SVC(kernel = 'rbf', random_state = 1,gamma='auto')
+    model_SVM.fit(points,labels)
+    predictions_lung = model_SVM.predict(val_lung)
+        
+    predictions_outer_lung, labels_outer_lung = outerLungPrediction(val_x, val_masks)
+    dice, jaccard, matrix = getPerformanceMetrics(predictions_lung, labels_lung, predictions_outer_lung, labels_outer_lung)
+    print("The dice value is %.2f and the jaccard value is %.2f" % (dice, jaccard))
+
+    print("SVM test \n=======")
+    points, labels, mean_int, std_int= getTrainingSet(train_x, train_masks, 0.10)
+    test_lung, labels_lung  = getInputSet(test_x, test_masks, mean_int, std_int)
+    
+    model_SVM = SVC(kernel = 'rbf', random_state = 1,gamma='auto')
+    model_SVM.fit(points,labels)
+    predictions_lung = model_SVM.predict(test_lung)
+        
+    predictions_outer_lung, labels_outer_lung = outerLungPrediction(test_x, test_masks)
+    dice, jaccard, matrix = getPerformanceMetrics(predictions_lung, labels_lung, predictions_outer_lung, labels_outer_lung)
+    print("The dice value is %.2f and the jaccard value is %.2f" % (dice, jaccard))
+            
+"""
+Separate Features
+==============================================================================
+Separates the sample features according to the ground truth binary classification: 
+nodule and non-nodule.
+
+Arguments:
+    * sample_features: features for each point of the samples
+    * sample
+    * mask
+Returns:
+    * features_n: numpy array will the features corresponding to the nodule points
+    * features_nn: numpy array will the features corresponding to the non nodule points,
+    excluding the outer lung points
+"""
 
 def separateFeatures(sample_features, sample, mask):
    features_n = []
    features_nn = [] 
-   
    for feature in sample_features:
        features_n.append(feature[mask == 1])
        lung_mask= getLungMask(sample) - mask
        features_nn.append(feature[lung_mask==1])
     
-   return np.asarray(features_n), np.asarray(features_nn)
+   features_n = np.asarray(features_n)
+   features_nn = np.asarray(features_nn)
+   return features_n, features_nn
+
+"""
+Get Indexes
+==============================================================================
+Returns the indexes corresponding to the non-nodule and nodule features points.
+
+Arguments:
+    * features_n: numpy array will the features corresponding to the nodule points
+    * features_nn: numpy array will the features corresponding to the non nodule points,
+    excluding the outer lung points
+Returns:
+    * i_nodules: numpy array with the indexes for the nodule features points
+    * i_non_nodules: numpy array with the indexes for the non nodule features points
+"""
 
 def getIndexes(features_n, features_nn):
     #ir buscar os indices de cada pixel
@@ -31,6 +99,23 @@ def getIndexes(features_n, features_nn):
     np.random.shuffle(i_non_nodules)
     return i_nodules, i_non_nodules
 
+"""
+Get Feature Points
+==============================================================================
+Returns a list with the training points and corresponding labels.
+
+Arguments:
+    * features_n: numpy array will the features corresponding to the nodule points
+    * features_nn: numpy array will the features corresponding to the non nodule points,
+    excluding the outer lung points
+    * number_of_pixel: number of points to extract, per image, of each kind of nodule
+        if <= 1: the number of pixels is in percentage
+        else: is an absolute value
+Returns:
+    * points: points extracted from the features_n and features_nn according to 
+    the number_of_pixel
+    * labels: points labels (nodule = 1, non_nodule = 0)
+"""
       
 def getFeaturePoints(features_n, features_nn, number_of_pixel):
     i_nodules, i_non_nodules = getIndexes(features_n,features_nn)
@@ -50,6 +135,19 @@ def getFeaturePoints(features_n, features_nn, number_of_pixel):
     labels = np.concatenate((np.ones(np.shape(nodule_points)[0]),np.zeros(np.shape(non_nodule_points)[0])), axis = 0)
     return points, labels
 
+"""
+Normalize Images
+==============================================================================
+Calculates the mean and std of the training set in order to normalize all the 
+samples.
+
+Arguments:
+    * train_images
+Returns:
+    * mean: mean intensity of the train_images
+    * std: std of the train_images
+"""
+
 def normalizeImages(train_images):
     all_px = []
     for nodule in train_images:
@@ -58,6 +156,12 @@ def normalizeImages(train_images):
     mean = np.mean(all_px)
     std = np.std(all_px)
     return mean, std
+
+"""
+Get Training Set
+==============================================================================
+
+"""
 
 def getTrainingSet(train_slices, train_slices_masks, number_of_pixel):
     mean_int, std_int = normalizeImages(train_slices)
@@ -85,6 +189,11 @@ def getTrainingSet(train_slices, train_slices_masks, number_of_pixel):
             
     return points, labels, mean_int, std_int
 
+"""
+Get Input Set
+==============================================================================
+
+"""
 def getInputSet(nodules, masks,mean_int, std_int):
     norm_nodules = [(nodule - mean_int)/std_int for nodule in nodules]
     smooth_img = gaussianSmooth(norm_nodules)
@@ -125,7 +234,11 @@ def getInputSet(nodules, masks,mean_int, std_int):
     input_set = np.transpose(np.asarray((nodules_px, si_px, cv_px, Vmed_px)))
     
     return (input_set , mask_px)
-   
+"""
+Outer Lung Prediction
+==============================================================================
+
+"""   
 def outerLungPrediction(nodules, masks):
     labels_outer_lung = []
     predictions_outer_lung = []
@@ -137,7 +250,11 @@ def outerLungPrediction(nodules, masks):
     
     return np.hstack(predictions_outer_lung), np.hstack(labels_outer_lung)
 
+"""
+Confusion Matrix
+==============================================================================
 
+"""   
 def confusionMatrix(predictions, labels):
     true_positives = 0
     false_negatives = 0
@@ -158,7 +275,11 @@ def confusionMatrix(predictions, labels):
                 
     return np.asarray([[true_positives, false_negatives], [false_positives, true_negatives]])
 
+"""
+Get Performance Metrics
+==============================================================================
 
+""" 
 def getPerformanceMetrics(predictions_lung, labels_lung, predictions_outer_lung, labels_outer_lung):
     c_matrix_lung = confusionMatrix(predictions_lung, labels_lung)
     c_matrix_outer_lung = confusionMatrix(predictions_outer_lung, labels_outer_lung)
@@ -174,51 +295,4 @@ def getPerformanceMetrics(predictions_lung, labels_lung, predictions_outer_lung,
     
     return dice, jaccard, matrix
 
-
-#train_slices, train_slices_masks, y_train, test_slices, test_slices_masks, y_test , val_slices, val_slices_masks, y_val = getData()
-all_train_slices, all_train_slices_masks, all_y_train, test_slices, test_slices_masks, y_test , all_val_slices, all_val_slices_masks, all_y_val = getData("cross_val")
-for train_slices, train_slices_masks, val_slices, val_slices_masks in zip(all_train_slices, all_train_slices_masks, all_val_slices, all_val_slices_masks):
-    print("SVM \n=======")
-    points, labels, mean_int, std_int = getTrainingSet(train_slices, train_slices_masks, 0.10 )
-    val_lung, labels_lung  = getInputSet(val_slices, val_slices_masks, mean_int, std_int)
-    
-    model_SVM = SVC(kernel = 'rbf', random_state = 1,gamma='auto')
-    model_SVM.fit(points,labels)
-    predictions_lung = model_SVM.predict(val_lung)
-        
-    predictions_outer_lung, labels_outer_lung = outerLungPrediction(val_slices, val_slices_masks)
-    dice, jaccard, matrix = getPerformanceMetrics(predictions_lung, labels_lung, predictions_outer_lung, labels_outer_lung)
-    print("The dice value is %.2f and the jaccard value is %.2f" % (dice, jaccard))
-
-print("SVM test \n=======")
-points, labels, mean_int, std_int= getTrainingSet(train_slices, train_slices_masks, 0.10)
-test_lung, labels_lung  = getInputSet(test_slices, test_slices_masks, mean_int, std_int)
-
-model_SVM = SVC(kernel = 'rbf', random_state = 1,gamma='auto')
-model_SVM.fit(points,labels)
-predictions_lung = model_SVM.predict(test_lung)
-    
-predictions_outer_lung, labels_outer_lung = outerLungPrediction(test_slices, test_slices_masks)
-dice, jaccard, matrix = getPerformanceMetrics(predictions_lung, labels_lung, predictions_outer_lung, labels_outer_lung)
-print("The dice value is %.2f and the jaccard value is %.2f" % (dice, jaccard))
-
-
-"""
-reshape(n_features, 51x51) em vez de concatenação!
-==================================================
-Guardar matriz de caracteristicas e apagar nodulos!
-
-
-    for i in [9,11,13,15]:
-        print("K = %.0f \n=======" % i)
-        
-        
-       
-        model = KNeighborsClassifier(n_neighbors=3)
-        model.fit(points,labels)
-        
-        predictions_lung = model.predict(val_lung)
-        predictions_outer_lung, labels_outer_lung = outerLungPrediction(val_slices, val_slices_masks)
-        dice, jaccard, matrix = getPerformanceMetrics(predictions_lung, labels_lung, predictions_outer_lung, labels_outer_lung)
-        print("The dice value is %.2f and the jaccard value is %.2f" % (dice, jaccard))
-"""
+run()

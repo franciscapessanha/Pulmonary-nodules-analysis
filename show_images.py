@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Nov 30 09:43:17 2018
-
-@author: mariafranciscapessanha
-"""
 import numpy as np
 from matplotlib import pyplot as plt
 from skimage.segmentation import find_boundaries
