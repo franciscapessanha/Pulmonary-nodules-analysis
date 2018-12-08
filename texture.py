@@ -38,14 +38,15 @@ def calcIntensityFeatures(nodules, masks):
     intensity_features = []
     for nodule, mask in zip(nodules, masks):
         mean = np.mean(nodule[mask == 1])
-        max_ = np.max(nodule[mask == 1])
-        min_ = np.min(nodule[mask == 1])
-        median = np.median(nodule[mask == 1])
+        #max_ = np.max(nodule[mask == 1])
+        #min_ = np.min(nodule[mask == 1])
+        #median = np.median(nodule[mask == 1])
         std = np.std(nodule[mask == 1])
-        intensity_features.append([mean, std])  
+        ent = entropy(nodule/3,disk(5))
+        intensity_features.append([mean,std,np.mean(ent[mask == 1])])  
+    
     return intensity_features
     
-
 def getIntensityFeatures(train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks):
     train_int_features = np.vstack(calcIntensityFeatures(train_slices, train_slices_masks))
     val_int_features = np.vstack(calcIntensityFeatures(val_slices, val_slices_masks))
@@ -63,17 +64,15 @@ def calcShapeFeatures(masks):
         contour = contour[0]
         area = cv.contourArea(contour)
         perimeter = cv.arcLength(contour, True)
-        eq_diameter = (2*np.pi)*np.sqrt(area)
         compactness = (perimeter**2)/ (4 * np.pi * area)
         circularity = 4 * np.pi * area / ( perimeter**2 )
-        shape_features.append([eq_diameter, compactness, circularity])
+        shape_features.append([area, compactness, circularity])
     return shape_features
 
 def getShapeFeatures(train_slices_masks,val_slices_masks, test_slices_masks):
     train_shape_features = np.vstack(calcShapeFeatures(train_slices_masks))
     val_shape_features = np.vstack(calcShapeFeatures(val_slices_masks))
     test_shape_features = np.vstack(calcShapeFeatures(test_slices_masks))
-    
     return train_shape_features, val_shape_features, test_shape_features
 
 """
@@ -91,31 +90,33 @@ def calcLBP(nodules, masks, n_points, radius):
 def calcHist(all_lbp, max_, min_):
     all_hist = []
     for lbp in all_lbp:
-        n_bins = int(256/2)
+        n_bins = max_ + 1
         
-        hist,_ = np.histogram(lbp,normed = True, bins=n_bins, range = (int(min_), int(max_)))
+        hist,_ = np.histogram(lbp,normed = True, bins=n_bins,range=(min_, max_))
         all_hist.append(hist)
     return all_hist
 
-def getLBPFeatures(train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks, radius = 1,n_points = 8):
+def getLBPFeatures(train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks, radius = 4,n_points = 8*4):
     train_lbp = calcLBP(train_slices, train_slices_masks, n_points, radius)
     val_lbp = calcLBP(val_slices, val_slices_masks, n_points, radius)
     test_lbp = calcLBP(test_slices, test_slices_masks, n_points, radius)
 
-    max_ = np.max([np.max(np.hstack(train_lbp)), np.max(np.hstack(val_lbp)), np.max(np.hstack(test_lbp))])
-    min_ = np.min([np.min(np.hstack(train_lbp)), np.min(np.hstack(val_lbp)), np.min(np.hstack(test_lbp))])
-    
+    max_ = int(np.max(np.hstack(train_lbp)))
+    min_ = int(np.min(np.hstack(train_lbp)))
+
     train_hist = np.vstack(calcHist(train_lbp, max_, min_))
-    val_hist = np.vstack(calcHist(val_lbp,max_, min_))
+    val_hist = np.vstack(calcHist(val_lbp, max_, min_))
     test_hist = np.vstack(calcHist(test_lbp, max_, min_))
     
     return train_hist, val_hist, test_hist
+
 
 """
 Gabor Filter (frequency and orientation) Features
 ===================
 """
 
+"""
 def calculateGaborFilters(slices):
     filtered_ims = []
     for i in range(len(slices)):
@@ -160,49 +161,63 @@ def GetGaborFilter(train_slices, val_slices, test_slices):
     
     return train_gabor_features, val_gabor_features, test_gabor_features
 
-  
+""" 
+ 
 """
 SVM, PCA and plot
 ===================
 """
 def getPrediction(train_features, y_train, val_features, y_val):
-    modelSVM = SVC(gamma = 'auto', decision_function_shape='ovo', class_weight='balanced')
+    modelSVM = SVC(kernel = "rbf", gamma = 'auto',probability=True)
     modelSVM.fit(train_features, y_train)
     predictSVM = modelSVM.predict(val_features)
 
     accuracys=[]
-    prediction_knn = []
 
     accuracy = accuracy_score(y_val, predictSVM)
     print("Accuracy SVM = %.3f" % accuracy)
 
-    return predictSVM, prediction_knn, accuracys
+    return predictSVM, accuracys
 
 
+from sklearn.preprocessing import StandardScaler
 train_slices, train_slices_masks, y_train, test_slices, test_slices_masks, y_test , val_slices, val_slices_masks, y_val = getData()
 
 mean_int, std_int = normalizeIntensity(train_slices, train_slices_masks)
+
 train_slices = (train_slices - mean_int)/std_int
 val_slices = (val_slices - mean_int)/std_int
 test_slices = (test_slices - mean_int)/std_int
 
 train_int_features, val_int_features, test_int_features = getIntensityFeatures(train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks)
 train_shape_features, val_shape_features, test_shape_features = getShapeFeatures(train_slices_masks, val_slices_masks,test_slices_masks)
-train_gabor_features, val_gabor_features, test_gabor_features = GetGaborFilter(train_slices, val_slices, test_slices)
 train_lbp_features, val_lbp_features, test_lbp_features = getLBPFeatures(train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks)
+#train_gabor_features, val_gabor_features, test_gabor_features = GetGaborFilter(train_slices, val_slices, test_slices)
 
 print("Intensity Features only \n=======================")
-prediction_int = getPrediction(train_int_features, y_train, val_int_features, y_val)
+int_train_scaled = StandardScaler().fit_transform(train_int_features)
+int_val_scaled = StandardScaler().fit_transform(val_int_features)
 
+prediction_int = getPrediction(int_train_scaled , y_train, int_val_scaled , y_val)
 pca = PCA(n_components=2)
 pca_train = pca.fit_transform(train_int_features)
+
+"""
 plt.plot(pca_train[y_train==0,0], pca_train[y_train==0,1],'ro')
 plt.plot(pca_train[y_train==1,0], pca_train[y_train==1,1], 'bo')
 plt.plot(pca_train[y_train==2,0], pca_train[y_train==2,1],'co')
 plt.show()
+"""
+plt.plot(train_int_features[y_train==0,2],'ro')
+plt.plot(train_int_features[y_train==1,2], 'bo')
+plt.plot(train_int_features[y_train==2,2],'co')
+plt.show()
 
 print("Shape Features only \n=======================")
-prediction_shape = getPrediction(train_shape_features, y_train, val_shape_features, y_val)
+int_train_scaled = StandardScaler().fit_transform(train_shape_features)
+int_val_scaled = StandardScaler().fit_transform(val_shape_features)
+prediction_shape = getPrediction(int_train_scaled , y_train, int_val_scaled , y_val)
+#prediction_shape = getPrediction(train_shape_features, y_train, val_shape_features, y_val)
 
 pca = PCA(n_components=2)
 pca_train = pca.fit_transform(train_shape_features)
@@ -211,6 +226,7 @@ plt.plot(pca_train[y_train==1,0], pca_train[y_train==1,1], 'bo')
 plt.plot(pca_train[y_train==2,0], pca_train[y_train==2,1],'co')
 plt.show()
 
+"""
 print("Gabor Features only \n=======================")
 prediction_gb = getPrediction(train_gabor_features, y_train, val_gabor_features, y_val)
 
@@ -221,23 +237,29 @@ plt.plot(pca_train[y_train==0,0], pca_train[y_train==0,1],'ro')
 plt.plot(pca_train[y_train==1,0], pca_train[y_train==1,1], 'bo')
 plt.plot(pca_train[y_train==2,0], pca_train[y_train==2,1],'co')
 plt.show()
+"""
 
 print("LBP Features only \n=======================")
 prediction_lbp = getPrediction(train_lbp_features, y_train, val_lbp_features, y_val)
-
-
 pca = PCA(n_components=2)
 pca_train = pca.fit_transform(train_lbp_features)
+pca_val = pca.fit_transform(val_lbp_features)
 plt.plot(pca_train[y_train==0,0], pca_train[y_train==0,1],'ro')
 plt.plot(pca_train[y_train==1,0], pca_train[y_train==1,1], 'bo')
 plt.plot(pca_train[y_train==2,0], pca_train[y_train==2,1],'co')
+prediction_lbp = getPrediction(pca_train, y_train, pca_val, y_val)
 plt.show()
 
 print("All Features\n=======================")
-train_features = np.concatenate((train_int_features, train_shape_features,  train_gabor_features), axis=1)
-val_features = np.concatenate((val_int_features, val_shape_features, val_gabor_features), axis=1)
-test_features = np.concatenate((test_int_features, test_shape_features,  test_gabor_features), axis=1)
+train_features = np.concatenate((train_int_features, train_shape_features,  train_lbp_features), axis=1)
+val_features = np.concatenate((val_int_features, val_shape_features, val_lbp_features), axis=1)
+test_features = np.concatenate((test_int_features, test_shape_features,  test_lbp_features), axis=1)
 prediction_all = getPrediction(train_features, y_train, val_features, y_val)
+
+#train_features = np.concatenate((train_int_features, train_shape_features), axis=1)
+#val_features = np.concatenate((val_int_features, val_shape_features), axis=1)
+#test_features = np.concatenate((test_int_features, test_shape_features), axis=1)
+#prediction_all = getPrediction(train_features, y_train, val_features, y_val)
 
 pca = PCA(n_components=2)
 pca_train = pca.fit_transform(train_features)
@@ -247,8 +269,10 @@ plt.plot(pca_train[y_train==2,0], pca_train[y_train==2,1],'co')
 plt.show()
 
 #%%
+
+"""
 print("PCA\n=============")
-pca = PCA(n_components=2)
+pca = PCA(n_components=10)
 pca_train = pca.fit_transform(train_features)
 modelSVM = SVC(gamma = 'auto', decision_function_shape='ovo', class_weight='balanced')
 modelSVM.fit(pca_train, y_train)
@@ -263,10 +287,11 @@ plt.show()
 
 print("Accuracy SVM = %.3f" % accuracy)
 
-"""
+
 plt.plot(train_shape_features[y_train==0,0], 'ro')
 plt.plot(train_shape_features[y_train==1,0], 'bo')
 plt.plot(train_shape_features[y_train==2,0], 'co')
 plt.show()
 """
+
     
