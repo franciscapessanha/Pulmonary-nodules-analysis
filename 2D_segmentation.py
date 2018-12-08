@@ -2,6 +2,7 @@
 from get_data import getData
 import numpy as np
 from lung_mask import getLungMask
+from matplotlib import pyplot as plt
 from hessian_based import getEigNodules, gaussianSmooth, getSI, getCV, getVmed
 from sklearn.svm import SVC
 
@@ -25,30 +26,45 @@ Get 2D Segmentation
 ===============================================================================
 """
 def get2DSegmentation(train_x, train_masks, val_x, val_masks, test_x, test_masks):
-    print("SVM \n=======")
+    print("SVM val \n=======")
     points, labels, mean_int, std_int = getTrainingSet(train_x, train_masks, 0.10 )
-    val_lung, labels_lung  = getInputSet(val_x, val_masks, mean_int, std_int)
     
+    val_lung, labels_val_lung  = getInputSet(val_x, val_masks, mean_int, std_int)
+
     model_SVM = SVC(kernel = 'rbf', random_state = 1,gamma='auto')
     model_SVM.fit(points,labels)
-    predictions_lung = model_SVM.predict(val_lung)
-        
+    
+    pred_val_lung = []
+    for x, sample in zip(val_lung, val_x):
+        pred_lung = model_SVM.predict(np.transpose(np.vstack(x)))
+        pred_val_lung.append(pred_lung) 
+        showResults(pred_lung, sample)
+    
     predictions_outer_lung, labels_outer_lung = outerLungPrediction(val_x, val_masks)
-    dice, jaccard, matrix = getPerformanceMetrics(predictions_lung, labels_lung, predictions_outer_lung, labels_outer_lung)
+    dice, jaccard, matrix = getPerformanceMetrics(np.hstack(pred_val_lung), np.hstack(labels_val_lung), predictions_outer_lung, labels_outer_lung)
     print("The dice value is %.2f and the jaccard value is %.2f" % (dice, jaccard))
 
     print("SVM test \n=======")
-    points, labels, mean_int, std_int= getTrainingSet(train_x, train_masks, 0.10)
-    test_lung, labels_lung  = getInputSet(test_x, test_masks, mean_int, std_int)
+    test_lung, labels_test_lung  = getInputSet(test_x, test_masks, mean_int, std_int)
     
-    model_SVM = SVC(kernel = 'rbf', random_state = 1,gamma='auto')
-    model_SVM.fit(points,labels)
-    predictions_lung = model_SVM.predict(test_lung)
-        
+    pred_test_lung = []
+    for x, sample in zip(test_lung, test_x):
+        pred_lung = model_SVM.predict(np.transpose(np.vstack(x)))
+        pred_test_lung.append(pred_lung) 
+        showResults(pred_lung, sample)
+
     predictions_outer_lung, labels_outer_lung = outerLungPrediction(test_x, test_masks)
-    dice, jaccard, matrix = getPerformanceMetrics(predictions_lung, labels_lung, predictions_outer_lung, labels_outer_lung)
+    dice, jaccard, matrix = getPerformanceMetrics(np.hstack(pred_test_lung), np.hstack(labels_test_lung), predictions_outer_lung, labels_outer_lung)
     print("The dice value is %.2f and the jaccard value is %.2f" % (dice, jaccard))
             
+def showResults(prediction_lung, sample):
+    result = np.zeros(np.shape(sample), np.uint8)
+    lung_mask = getLungMask(sample)
+    result[lung_mask == 1] = prediction_lung
+    plt.imshow(result, cmap = "gray")
+    plt.show()
+    plt.imshow(sample, cmap = "gray")
+    plt.show()
 """
 Separate Features
 ==============================================================================
@@ -160,7 +176,6 @@ def normalizeImages(train_images):
 """
 Get Training Set
 ==============================================================================
-
 """
 
 def getTrainingSet(train_slices, train_slices_masks, number_of_pixel):
@@ -192,7 +207,6 @@ def getTrainingSet(train_slices, train_slices_masks, number_of_pixel):
 """
 Get Input Set
 ==============================================================================
-
 """
 def getInputSet(nodules, masks,mean_int, std_int):
     norm_nodules = [(nodule - mean_int)/std_int for nodule in nodules]
@@ -209,6 +223,12 @@ def getInputSet(nodules, masks,mean_int, std_int):
     masked_Vmed = []
     masked_gt = []
     
+    nodules_px = []
+    si_px = []
+    cv_px = []
+    Vmed_px = []
+    mask_px = []
+    
     for nodule, norm_nodule, si, cv, v_med, mask in zip(nodules,norm_nodules, SI_nodules, CV_nodules, Vmed_nodules, masks) :
         lung_mask = getLungMask(nodule)
         masked_nodules.append(norm_nodule[lung_mask == 1])
@@ -218,26 +238,18 @@ def getInputSet(nodules, masks,mean_int, std_int):
         masked_gt.append(mask[lung_mask == 1])
         
     for i in(range(len(masked_nodules))):
-        if i == 0:
-            nodules_px = masked_nodules[i]
-            si_px = masked_SI[i]
-            cv_px = masked_CV[i]
-            Vmed_px = masked_Vmed[i]
-            mask_px = masked_gt[i]
-        else:
-            nodules_px= np.concatenate((nodules_px, masked_nodules[i]), axis = 0)
-            si_px = np.concatenate((si_px, masked_SI[i]), axis = 0)
-            cv_px = np.concatenate((cv_px , masked_CV[i]), axis = 0)
-            Vmed_px = np.concatenate((Vmed_px, masked_Vmed[i]), axis = 0)
-            mask_px = np.concatenate((mask_px,masked_gt[i]), axis = 0)
-    
+            nodules_px.append(masked_nodules[i])
+            si_px.append(masked_SI[i])
+            cv_px.append(masked_CV[i])
+            Vmed_px.append(masked_Vmed[i])
+            mask_px.append(masked_gt[i])
+
     input_set = np.transpose(np.asarray((nodules_px, si_px, cv_px, Vmed_px)))
     
     return (input_set , mask_px)
 """
 Outer Lung Prediction
 ==============================================================================
-
 """   
 def outerLungPrediction(nodules, masks):
     labels_outer_lung = []
@@ -253,7 +265,6 @@ def outerLungPrediction(nodules, masks):
 """
 Confusion Matrix
 ==============================================================================
-
 """   
 def confusionMatrix(predictions, labels):
     true_positives = 0
@@ -278,7 +289,6 @@ def confusionMatrix(predictions, labels):
 """
 Get Performance Metrics
 ==============================================================================
-
 """ 
 def getPerformanceMetrics(predictions_lung, labels_lung, predictions_outer_lung, labels_outer_lung):
     c_matrix_lung = confusionMatrix(predictions_lung, labels_lung)

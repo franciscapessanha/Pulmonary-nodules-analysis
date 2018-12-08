@@ -13,8 +13,6 @@ from get_data import getData
 from show_images import showImages
 from skimage.measure import label, regionprops
 
-#MUDAR ESTES NOMES
-#=================
 
 """
 get_lung_mask
@@ -34,9 +32,18 @@ def getLungMask(nodule):
     mask = cv.medianBlur(nodule_mask,3)
     dilated_mask = cv.dilate(mask,kernel_ellipse,iterations = 1)
     erode_mask = cv.erode(dilated_mask,kernel_ellipse,iterations = 3)    
-    hull = convex_hull_image(erode_mask)      
-        
+    
+    _, contours,_= cv.findContours(erode_mask,cv.RETR_TREE,cv.CHAIN_APPROX_SIMPLE)
+    contours = sorted(contours, key = cv.contourArea, reverse = True) 
+    contour = contours[0]
+
+    filled_contour = np.zeros(np.asarray(nodule).shape, np.uint8)
+    cv.fillPoly(filled_contour, pts = np.asarray(contour), color = 1)
+
+    hull = convex_hull_image(filled_contour)  
+
     return hull
+
 
 """
 show_lung_mask
