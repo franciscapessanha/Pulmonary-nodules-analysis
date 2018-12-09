@@ -56,7 +56,7 @@ def calcIntensityFeatures(nodules, masks):
         #min_ = np.min(nodule[mask == 1])
         #median = np.median(nodule[mask == 1])
         std = np.std(nodule[mask == 1])
-        ent = entropy(nodule/3,disk(5))
+        #ent = entropy(nodule/3,disk(5))
         intensity_features.append([mean, std])  
     
     return intensity_features

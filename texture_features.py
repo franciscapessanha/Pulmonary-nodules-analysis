@@ -8,11 +8,11 @@ Texture Features
 """
 
 def getTextureFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks):
-    #train_gabor, val_gabor, test_gabor = getGaborFilter(train_x, train_masks, val_x, val_masks, test_x, test_masks)
+    train_gabor, val_gabor, test_gabor = getGaborFilter(train_x, train_masks, val_x, val_masks, test_x, test_masks)
     train_lbp, val_lbp, test_lbp = getLBPFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks, 1*3,8*3)
     
     #return train_gabor, val_gabor, test_gabor,train_lbp, val_lbp, test_lbp
-    return train_lbp, val_lbp, test_lbp
+    return train_gabor, val_gabor, test_gabor,train_lbp, val_lbp, test_lbp
 """
 LBP Features
 ==============================================================================
@@ -61,41 +61,41 @@ def getLBPFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks, r
 Gabor Filter (frequency and orientation) Features
 ===============================================================================
 """
-def calculateGaborFilters(slices):
+def calculateGaborFilters(nodules, masks):
     filtered_ims = []
-    for i in range(len(slices)):
-        for theta in range(3):
-            theta = theta / 3. * np.pi
-            for sigma in (6, 7):
-                for frequency in (0.06, 0.07):
-                    filt_real, filt_imag = gabor(slices[i], frequency, theta=theta, sigma_x=sigma, sigma_y=sigma)
-                    filtered_ims.append(filt_real)
+    
+    #for i in range(len(slices)):
+    for nodule, mask in zip(nodules, masks):
+        for theta in (0,45,90,135):
+            theta = theta / 180. * np.pi
+            for sigma in (0.5, 1.5, 3.):
+                for frequency in (0.3, 0.4, 0.5):
+                    filt_real, filt_imag = gabor(nodule, frequency, theta=theta, sigma_x=sigma, sigma_y=sigma)
+                    filtered_ims.append(filt_real[mask == 1])
+                    
     return filtered_ims
 
-def reshapeGabor(filtered_ims, slices):
-    vector_h_img=[]
-    img_gabor_filters=[]
-    all_img=[]
-    for i in range(len(filtered_ims)):
-        h_img = np.hstack(filtered_ims[i])
-        vector_h_img.append(h_img)
-    px_img = np.asarray(vector_h_img)
-    for j in range(0,len(slices)):
-        img_gabor_filters.append(px_img[12*j:12*j+12][:])
-        h_img_gabor_filters = np.hstack(img_gabor_filters[j])
-        all_img.append(h_img_gabor_filters)     
+def reshapeGabor(filtered_ims, nodules):
+    gabor_results=[]
+    last_gabor = []
     
-    gabor_features = np.asarray(all_img) 
-    return gabor_features
+    for j in range(0,len(nodules)):
+        each_img_nodule = filtered_ims[36*j:36*j+36]
+        nodule_metrics = []
+        for i in range(len(each_img_nodule)):
+            nodule_metrics.append([np.mean(each_img_nodule[i]), np.std(each_img_nodule[i])])
+        gabor_results.append(np.hstack(nodule_metrics))
+         
+            
+    return gabor_results
 
 def getGaborFilter(train_x, train_masks, val_x, val_masks, test_x, test_masks):
-    filtered_ims_train = calculateGaborFilters(train_x)
-    filtered_ims_val = calculateGaborFilters(val_x)
-    filtered_ims_test = calculateGaborFilters(test_x)
+    filtered_ims_train = calculateGaborFilters(train_x, train_masks)
+    filtered_ims_val = calculateGaborFilters(val_x, val_masks)
+    filtered_ims_test = calculateGaborFilters(test_x, test_masks)
     
     train_gabor_features = reshapeGabor(filtered_ims_train, train_x)
     val_gabor_features = reshapeGabor(filtered_ims_val, val_x)
     test_gabor_features = reshapeGabor(filtered_ims_test, test_x)
     
     return train_gabor_features, val_gabor_features, test_gabor_features
-

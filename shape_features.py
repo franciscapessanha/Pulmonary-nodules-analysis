@@ -17,6 +17,6 @@ def calcShapeFeatures(masks):
         perimeter = props[0]['perimeter']
         compactness = (perimeter**2)/ (4 * np.pi * area)
         circularity = 4 * np.pi * area / ( perimeter**2 )
-        shape_features.append([compactness, circularity])
+        shape_features.append([area, compactness, circularity])
     return shape_features
 
