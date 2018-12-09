@@ -59,7 +59,7 @@ Get Prediction
 ===============================================================================
 """
 def getPrediction(train_features, train_y, val_features, val_y):
-    modelSVM = SVC(kernel = 'linear', gamma = 'auto', decision_function_shape= 'ovo', class_weight='balanced')
+    modelSVM = SVC(kernel = 'rbf', gamma = 'auto', decision_function_shape= 'ovo',class_weight='balanced')
     modelSVM.fit(train_features, train_y)
     predictSVM = modelSVM.predict(val_features)
 

@@ -1,7 +1,7 @@
 import numpy as np
 from skimage.feature import local_binary_pattern, greycomatrix, greycoprops
 from skimage.filters import gabor, gabor_kernel
-
+import cv2 as cv
 """
 Texture Features
 ==============================================================================
@@ -9,7 +9,7 @@ Texture Features
 
 def getTextureFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks):
     #train_gabor, val_gabor, test_gabor = getGaborFilter(train_x, train_masks, val_x, val_masks, test_x, test_masks)
-    train_lbp, val_lbp, test_lbp = getLBPFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks, 3,8*3)
+    train_lbp, val_lbp, test_lbp = getLBPFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks, 1*3,8*3)
     
     #return train_gabor, val_gabor, test_gabor,train_lbp, val_lbp, test_lbp
     return train_lbp, val_lbp, test_lbp
@@ -22,9 +22,12 @@ def calcLBP(nodules, masks, n_points, radius):
     all_lbp = []
     metrics_lbp = []
     for nodule, mask in zip(nodules, masks):
+        kernel_ellipse = cv.getStructuringElement(cv.MORPH_ELLIPSE, (1,1))
+        erode_mask = cv.erode(mask,kernel_ellipse)
         lbp = local_binary_pattern(nodule, n_points, radius, 'var') #'ror' for rotation invariant    
-        all_lbp.append(lbp[mask == 1])
-        metrics_lbp.append([np.mean(lbp[mask == 1]), np.std(lbp[mask == 1])])
+        
+        all_lbp.append(lbp[erode_mask == 1])
+        metrics_lbp.append([np.mean(lbp[erode_mask == 1]), np.std(lbp[erode_mask == 1])])
     return all_lbp, metrics_lbp
 
 def calcHist(all_lbp, max_, min_):
