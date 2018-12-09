@@ -20,7 +20,7 @@ Returns:
 def getData(mode = "default"):
    nodules, masks, metadata = loadData()
    x_train, y_train, masks_train, x_test, y_test, masks_test, x_val, y_val, masks_val = getSets(nodules, metadata, masks, mode) 
-   train_slices, train_slices_masks, test_slices, test_slices_masks, val_slices, val_slices_masks = getMiddleImages(x_train, masks_train, x_test, masks_test, x_val, masks_val, mode )
+   train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks = getMiddleImages(x_train, masks_train, x_test, masks_test, x_val, masks_val, mode )
       
    return train_slices, train_slices_masks, y_train, val_slices, val_slices_masks, y_val, test_slices, test_slices_masks, y_test   
 
@@ -397,5 +397,6 @@ def getMiddleImages(x_train, masks_train, x_test, masks_test, x_val, masks_val, 
                 t_slices_masks.append(getMiddleSlice(val_masks[n]))
             val_slices.append(t_slices)
             val_slices_masks.append(t_slices_masks)
+
    
     return train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks

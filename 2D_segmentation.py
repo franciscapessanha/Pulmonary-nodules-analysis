@@ -5,7 +5,8 @@ from lung_mask import getLungMask
 from matplotlib import pyplot as plt
 from hessian_based import getEigNodules, gaussianSmooth, getSI, getCV, getVmed
 from sklearn.svm import SVC
-
+from skimage.measure import label, regionprops
+import cv2 as cv
 """
 Run
 ===============================================================================
@@ -17,6 +18,7 @@ def run(mode = "default"):
         get2DSegmentation(train_x, train_masks, val_x, val_masks, test_x, test_masks)
         
     elif mode == "cross_val":
+    
         cv_train_x, cv_train_masks, _, cv_val_x, cv_val_masks, _, test_x, test_masks, _ = getData("cross_val")
         for train_x, train_masks, val_x, val_masks in zip(cv_train_x, cv_train_masks, cv_val_x, cv_val_masks):
             get2DSegmentation(train_x, train_masks, val_x, val_masks, test_x, test_masks)
@@ -35,36 +37,60 @@ def get2DSegmentation(train_x, train_masks, val_x, val_masks, test_x, test_masks
     model_SVM.fit(points,labels)
     
     pred_val_lung = []
+    result_val = []
     for x, sample in zip(val_lung, val_x):
         pred_lung = model_SVM.predict(np.transpose(np.vstack(x)))
         pred_val_lung.append(pred_lung) 
-        showResults(pred_lung, sample)
+        result_val.append(np.hstack(showResults(pred_lung, sample)))
     
     predictions_outer_lung, labels_outer_lung = outerLungPrediction(val_x, val_masks)
-    dice, jaccard, matrix = getPerformanceMetrics(np.hstack(pred_val_lung), np.hstack(labels_val_lung), predictions_outer_lung, labels_outer_lung)
+    dice, jaccard, matrix = getPerformanceMetrics(np.hstack(result_val), np.hstack(labels_val_lung), predictions_outer_lung, labels_outer_lung)
     print("The dice value is %.2f and the jaccard value is %.2f" % (dice, jaccard))
 
     print("SVM test \n=======")
     test_lung, labels_test_lung  = getInputSet(test_x, test_masks, mean_int, std_int)
     
     pred_test_lung = []
+    result_test = []
     for x, sample in zip(test_lung, test_x):
         pred_lung = model_SVM.predict(np.transpose(np.vstack(x)))
         pred_test_lung.append(pred_lung) 
-        showResults(pred_lung, sample)
+        result_test.append(np.hstack(showResults(pred_lung, sample)))
 
     predictions_outer_lung, labels_outer_lung = outerLungPrediction(test_x, test_masks)
-    dice, jaccard, matrix = getPerformanceMetrics(np.hstack(pred_test_lung), np.hstack(labels_test_lung), predictions_outer_lung, labels_outer_lung)
+    dice, jaccard, matrix = getPerformanceMetrics(np.hstack(result_test), np.hstack(labels_test_lung), predictions_outer_lung, labels_outer_lung)
     print("The dice value is %.2f and the jaccard value is %.2f" % (dice, jaccard))
-            
+
+"""
+Show results
+===============================================================================
+"""            
 def showResults(prediction_lung, sample):
     result = np.zeros(np.shape(sample), np.uint8)
     lung_mask = getLungMask(sample)
     result[lung_mask == 1] = prediction_lung
-    plt.imshow(result, cmap = "gray")
-    plt.show()
-    plt.imshow(sample, cmap = "gray")
-    plt.show()
+    
+    
+    label_image = label(result)
+    props = regionprops(label_image)
+    areas = [r.area for r in props]
+    areas.sort()
+        
+    
+    for l in range(1,np.max(label_image)): 
+        if props[l-1]['area'] < 0.75 * areas[-1]:
+            result[label_image == l] = 0
+    
+    #plt.imshow(result, cmap = "gray")
+    #plt.show()  
+    #plt.imshow(sample, cmap = "gray")
+    #plt.show()
+    
+    """
+    #Resulta pior
+    result = cv.medianBlur(result,3)
+    """
+    return result[lung_mask == 1]
 """
 Separate Features
 ==============================================================================
@@ -305,4 +331,4 @@ def getPerformanceMetrics(predictions_lung, labels_lung, predictions_outer_lung,
     
     return dice, jaccard, matrix
 
-run()
+run("cross_val")

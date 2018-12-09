@@ -31,7 +31,7 @@ def getLungMask(nodule):
     kernel_ellipse = cv.getStructuringElement(cv.MORPH_ELLIPSE, (3,3))
     mask = cv.medianBlur(nodule_mask,3)
     dilated_mask = cv.dilate(mask,kernel_ellipse,iterations = 1)
-    erode_mask = cv.erode(dilated_mask,kernel_ellipse,iterations = 3)    
+    erode_mask = cv.erode(dilated_mask,kernel_ellipse,iterations = 2)    
     
     _, contours,_= cv.findContours(erode_mask,cv.RETR_TREE,cv.CHAIN_APPROX_SIMPLE)
     contours = sorted(contours, key = cv.contourArea, reverse = True) 
