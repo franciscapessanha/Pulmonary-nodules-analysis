@@ -17,12 +17,16 @@ Returns:
     * test: list with the val nodule middle slices and corresponding masks and labels
 """
 
-def getData(mode = "default"):
+def getData(mode = "default", type = "slice"):
    nodules, masks, metadata = loadData()
    x_train, y_train, masks_train, x_test, y_test, masks_test, x_val, y_val, masks_val = getSets(nodules, metadata, masks, mode) 
-   train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks = getMiddleImages(x_train, masks_train, x_test, masks_test, x_val, masks_val, mode )
-      
-   return train_slices, train_slices_masks, y_train, val_slices, val_slices_masks, y_val, test_slices, test_slices_masks, y_test   
+   if type == "slice":
+       train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks = getMiddleImages(x_train, masks_train, x_test, masks_test, x_val, masks_val, mode )  
+       return train_slices, train_slices_masks, y_train, val_slices, val_slices_masks, y_val, test_slices, test_slices_masks, y_test   
+   
+   elif type == "volume":
+       train_volumes, train_masks, val_volumes, val_masks, test_volumes, test_masks = getVolume(x_train, masks_train, x_test, masks_test, x_val, masks_val)
+       return train_volumes, train_masks, val_volumes, val_masks, test_volumes, test_masks
 
 """
 Find Extensions
@@ -400,3 +404,30 @@ def getMiddleImages(x_train, masks_train, x_test, masks_test, x_val, masks_val, 
 
    
     return train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks
+
+def getVolume(x_train, masks_train, x_test, masks_test, x_val, masks_val, mode = "default"):
+    test_volumes, test_masks = loadImages(x_test, masks_test)
+
+    if mode == "default":
+        train_volumes, train_masks = loadImages(x_train, masks_train)
+       
+        val_volumes, val_masks = loadImages(x_val, masks_val)
+       
+        
+    elif mode == "cross_val":
+        train_volumes = []
+        train_masks = []
+        val_volumes = []
+        val_masks = []
+        
+        for i in range(len(x_train)):
+            train_nods, t_masks = loadImages(x_train[i], masks_train[i])
+            train_volumes.append(train_nods)
+            train_masks.append(t_masks)
+        for i in range(len(x_val)):
+            val_nods, v_masks = loadImages(x_val[i], masks_val[i])
+            val_volumes.append(val_nods)
+            val_masks.append(v_masks)
+            
+    return train_volumes, train_masks, val_volumes, val_masks, test_volumes, test_masks
+    

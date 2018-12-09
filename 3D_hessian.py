@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.ndimage import gaussian_filter
 from skimage.feature import hessian_matrix, hessian_matrix_eigvals
+from get_data import getData
+
 
 
 # Multiscale Gaussian smoothing using sigm in the range 0.5 to 3.5
@@ -21,32 +23,25 @@ def gaussianSmooth(nodules):
     return smooth_nodules
 
 # 2. Compute the Hessian matrix and eig values
-# ============================================
-"""
-Hessian matrix:
-    
-Describes the 2nd order local image intensity variations around the selected 
-voxel. For the obtained Hessian matrix, eigenvector decomposition extracts an 
-orthonormal coordinate system that is aligned with the second order structure 
-of the image. Having the eigenvalues and knowing the (assumed) model of the 
-structure to be detected and the resulting theoretical behavior of the eigenvalues, 
-the decision can be made if the analyzed voxel belongs to the structure being searched.
 
-Eigen values:
-
-Eigenvalues give information about a matrix; the Hessian matrix contains geometric 
-information about thesurface z = f(x, y). We’re going to use the eigenvalues of 
-the Hessian matrix to get geometric information about the surface   
-"""
-
-"""
-The eigenvalues of the Hessian matrix, in decreasing order. The eigenvalues are 
-the leading dimension. That is, eigs[i, j, k] contains the ith-largest eigenvalue 
-at position (j, k).
-"""
 def getEig(image):
-    Hxx, Hxy, Hyy = hessian_matrix(image, order="xy")
-    return hessian_matrix_eigvals(Hxx, Hxy, Hyy)
+    [gx, gy, gz] = np.gradient(image)
+    [gxx, gxy, gxz] = np.gradient(gx)
+    [gxy, gyy, gyz] = np.gradient(gy)
+    [gxz, gyz, gzz] = np.gradient(gy)
+    
+    eig_vals = np.asarray([[[np.array([0.0,0.0,0.0]) for col in range(51)] for col in range(51)] for row in range(51)])
+
+    for i in range(len(image)):
+        for j in range(len(image)):
+            for k in range(len(image)):
+                row_1 = [gxx[i,j,k], gxy[i,j,k], gxz[i,j,k]]
+                row_2 = [gxy[i,j,k], gyy[i,j,k], gyz[i,j,k]]
+                row_3 = [gxz[i,j,k], gyz[i,j,k], gzz[i,j,k]]
+                eig_vals[i,j,k] = np.asarray(np.linalg.eigvals([row_1, row_2, row_3]))
+            
+    
+    return eig_vals
 
 def plotEig(nodule_eig):
     lower_eig = nodule_eig[0][1]
@@ -101,7 +96,7 @@ def getSI(eig_nodules):
         all_SI = []
         for s in range(len(all_sigmas_nodule)):
             nodule = all_sigmas_nodule[s]
-            lower_eig = nodule[1]
+            lower_eig = nodule[2]
             higher_eig = nodule[0]
             shape_indexes = (2/np.pi) * np.arctan((lower_eig + higher_eig)/(lower_eig - higher_eig))    
             all_SI.append(shape_indexes)
@@ -156,13 +151,14 @@ def getVmed(eig_nodules):
         all_Vmed = []
         for s in range(len(all_sigmas_nodule)):
             nodule = all_sigmas_nodule[s]
-            lower_eig = nodule[1]
+            lower_eig = nodule[2]
+            int_eig = nodule[1]
             higher_eig = nodule[0]
-            Vmed = np.zeros((51,51))
+            Vmed = np.zeros((51,51,51))
             for i in range(len(Vmed)):
                 for j in range(len(Vmed)):
                     if lower_eig[i][j] + higher_eig[i][j] < 0:
-                        Vmed[i][j] = -(lower_eig[i][j]/lower_eig[i][j]) * (lower_eig[i][j] + lower_eig[i][j])
+                        Vmed[i][j] = -(int_eig[i][j]/lower_eig[i][j]) * (int_eig[i][j] + lower_eig[i][j])
             all_Vmed.append(Vmed)
         Vmed_nodule = np.zeros((51,51))
         for i in range(51):
@@ -175,3 +171,7 @@ def getVmed(eig_nodules):
                 Vmed_nodule[i][j] = np.max(values)
         Vmed_nodules.append(Vmed_nodule)
     return Vmed_nodules
+
+train_volumes, train_masks, val_volumes, val_masks, test_volumes, test_masks = getData(mode = "default", type = "volume")
+smooth_nodules = gaussianSmooth(train_volumes)
+eig_nodules = getEigNodules(smooth_nodules)

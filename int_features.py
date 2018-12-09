@@ -31,18 +31,20 @@ def calcCircularFeatures(nodules, masks):
         centroid = props[0]['centroid']
 
         cv.circle(circle_0, (int(centroid[0]), int(centroid[1])),int(minor_axis*0.10),1, -1)
-        cv.circle(circle_1, (int(centroid[0]), int(centroid[1])),int(minor_axis*0.20),1, -1)
-        cv.circle(circle_2, (int(centroid[0]), int(centroid[1])),int(minor_axis*0.30),1, -1)
-        cv.circle(circle_3, (int(centroid[0]), int(centroid[1])),int(minor_axis*0.40),1, -1)
-        cv.circle(circle_4, (int(centroid[0]), int(centroid[1])),int(minor_axis*0.50),1, -1)
+        cv.circle(circle_1, (int(centroid[0]), int(centroid[1])),int(minor_axis*0.30),1, -1)
+        cv.circle(circle_2, (int(centroid[0]), int(centroid[1])),int(minor_axis*0.60),1, -1)
+
         
         mean_0 = np.mean(nodule[circle_0 == 1])
         mean_1 = np.mean(nodule[circle_1 == 1])
         mean_2 = np.mean(nodule[circle_2 == 1])
-        mean_3 = np.mean(nodule[circle_3 == 1])
-        mean_4 = np.mean(nodule[circle_4 == 1])
         
-        circular_features.append([mean_0,mean_1, mean_2, mean_3, mean_4])
+        std_0 = np.mean(nodule[circle_0 == 1])
+        std_1 = np.mean(nodule[circle_1 == 1])
+        std_2 = np.mean(nodule[circle_2 == 1])
+
+        
+        circular_features.append([mean_0, std_0, mean_1, std_1, mean_2, std_2])
 
     return circular_features
 
@@ -55,7 +57,7 @@ def calcIntensityFeatures(nodules, masks):
         #median = np.median(nodule[mask == 1])
         std = np.std(nodule[mask == 1])
         ent = entropy(nodule/3,disk(5))
-        intensity_features.append([mean, std, np.mean(ent[mask == 1])])  
+        intensity_features.append([mean, std])  
     
     return intensity_features
     

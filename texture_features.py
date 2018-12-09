@@ -37,7 +37,7 @@ def calcHist(all_lbp, max_, min_):
     return all_hist
 
 
-def getLBPFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks, radius = 2,n_points = 8*2):
+def getLBPFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks, radius = 1,n_points = 8):
     train_lbp, train_metrics = calcLBP(train_x, train_masks, n_points, radius)
     val_lbp, val_metrics = calcLBP(val_x, val_masks, n_points, radius)
     test_lbp, test_metrics = calcLBP(test_x, test_masks, n_points, radius)
