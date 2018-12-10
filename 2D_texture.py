@@ -99,8 +99,8 @@ for train_x, train_masks,train_y, val_x, val_masks, val_y in zip(cv_train_x, cv_
     print("\nCircular Features only \n=======================")
     prediction_circ = getPrediction(train_circ, train_y, val_circ, val_y)
     
-    print("\nShape Features only \n=======================")
-    prediction_shape = getPrediction(train_shape ,train_y, val_shape , val_y)
+    #print("\nShape Features only \n=======================")
+    #prediction_shape = getPrediction(train_shape ,train_y, val_shape , val_y)
     
     print("\nLBP Features only \n=======================")
     prediction_lbp = getPrediction(train_lbp, train_y, val_lbp, val_y)
@@ -113,12 +113,22 @@ for train_x, train_masks,train_y, val_x, val_masks, val_y in zip(cv_train_x, cv_
     val_features = np.concatenate((val_int, val_circ, val_lbp, val_gabor, val_shape), axis=1)
     test_features = np.concatenate((test_int, test_circ, test_lbp, test_shape), axis=1)
     prediction_all = getPrediction(train_features, train_y, val_features, val_y)
-    pca = PCA(n_components=15)
-    pca_train_all = pca.fit_transform(train_features)
-    pca_val_all = pca.fit_transform(val_features)
+    
     print("(PCA) All Features\n=======================")
-    prediction_all_pca = getPrediction(pca_train_all,train_y, pca_val_all, val_y)
-
+    pca = PCA(n_components = 8)
+    train_int_pca = np.concatenate((train_int, train_circ), axis = 1)
+    val_int_pca = np.concatenate((val_int, val_circ), axis = 1)
+    pca.fit_transform(train_int_pca)
+    pca.fit_transform(val_int_pca)
+    
+    pca = PCA(n_components = 8)
+    train_text_pca = np.concatenate((train_lbp, train_gabor), axis = 1)
+    val_text_pca = np.concatenate((val_lbp, val_gabor), axis = 1)
+    pca.fit_transform(train_text_pca)
+    pca.fit_transform(val_text_pca)
+   
+    prediction_all_pca = getPrediction(np.concatenate((train_int_pca, train_text_pca), axis = 1), train_y,np.concatenate((val_int_pca, val_text_pca), axis = 1), val_y)
+    
     
     """
     for i in range(len(val_x)):
