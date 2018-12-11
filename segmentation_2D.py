@@ -3,10 +3,11 @@ from get_data import getData
 import numpy as np
 from lung_mask import getLungMask
 from matplotlib import pyplot as plt
-from hessian_based import getEigNodules, gaussianSmooth, getSI, getCV, getVmed
+from two_hessian import getEigNodules, gaussianSmooth, getSI, getCV, getVmed
 from sklearn.svm import SVC
 from skimage.measure import label, regionprops
 import cv2 as cv
+
 """
 Run
 ===============================================================================
@@ -14,8 +15,8 @@ Run
 
 def run(mode = "default"):
     if mode == "default": 
-        train_x, train_masks, _, val_x, val_masks, _, test_x, test_masks, _ = getData(type_ = "volume")
-        get3DSegmentation(train_x, train_masks, val_x, val_masks, test_x, test_masks)
+        train_x, train_masks, _, val_x, val_masks, _, test_x, test_masks, _ = getData()
+        get2DSegmentation(train_x, train_masks, val_x, val_masks, test_x, test_masks)
         
     elif mode == "cross_val":
     
@@ -24,10 +25,10 @@ def run(mode = "default"):
             get2DSegmentation(train_x, train_masks, val_x, val_masks, test_x, test_masks)
             
 """
-Get3D Segmentation
+Get 2D Segmentation
 ===============================================================================
 """
-def get3DSegmentation(train_x, train_masks, val_x, val_masks, test_x, test_masks):
+def get2DSegmentation(train_x, train_masks, val_x, val_masks, test_x, test_masks):
     print("SVM val \n=======")
     points, labels, mean_int, std_int = getTrainingSet(train_x, train_masks, 0.10 )
     
@@ -75,22 +76,29 @@ def showResults(prediction_lung, sample):
     props = regionprops(label_image)
     areas = [r.area for r in props]
     areas.sort()
-        
+    
+    circle = np.zeros(np.shape(sample), np.uint8)
+    cv.circle(circle, (int(51/2),int(51/2)),int((51/2)*0.20),1, -1)
     
     for l in range(1,np.max(label_image)): 
-        if props[l-1]['area'] < 0.75 * areas[-1]:
+        if (1 not in np.unique(circle[label_image == l])):
             result[label_image == l] = 0
-    
-    #plt.imshow(result, cmap = "gray")
-    #plt.show()  
-    #plt.imshow(sample, cmap = "gray")
-    #plt.show()
-    
+        elif props[l-1]['area'] < 0.15 * areas[-1]:
+            result[label_image == l] = 0
+            
+    """
+    plt.imshow(result, cmap = "gray")
+    plt.show()  
+    plt.imshow(sample, cmap = "gray")
+    plt.show()
+    """
+
     """
     #Resulta pior
     result = cv.medianBlur(result,3)
     """
     return result[lung_mask == 1]
+
 """
 Separate Features
 ==============================================================================

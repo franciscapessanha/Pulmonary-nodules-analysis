@@ -1,13 +1,18 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Dec 11 09:44:45 2018
+
+@author: Margarida
+"""
 
 from get_data import getData
 import numpy as np
 from lung_mask import getLungMask
 from matplotlib import pyplot as plt
-from hessian import getEigNodules, gaussianSmooth, getSI, getCV, getVmed
+from hessian_3D import getEigNodules, gaussianSmooth, getSI, getCV, getVmed
 from sklearn.svm import SVC
 from skimage.measure import label, regionprops
 import cv2 as cv
-
 """
 Run
 ===============================================================================
@@ -15,50 +20,50 @@ Run
 
 def run(mode = "default"):
     if mode == "default": 
-        train_x, train_masks, _, val_x, val_masks, _, test_x, test_masks, _ = getData()
-        get2DSegmentation(train_x, train_masks, val_x, val_masks, test_x, test_masks)
+        train_volumes, train_masks, val_volumes, val_masks, test_volumes, test_masks = getData(mode = "default", type_ = "volume")
+        get3DSegmentation(train_volumes[0:2], train_masks[0:2], val_volumes[0:2], val_masks[0:2], test_volumes[0:2], test_masks[0:2])
         
     elif mode == "cross_val":
     
-        cv_train_x, cv_train_masks, _, cv_val_x, cv_val_masks, _, test_x, test_masks, _ = getData("cross_val")
-        for train_x, train_masks, val_x, val_masks in zip(cv_train_x, cv_train_masks, cv_val_x, cv_val_masks):
-            get2DSegmentation(train_x, train_masks, val_x, val_masks, test_x, test_masks)
+        cv_train_volume, cv_train_masks, _, cv_val_volume, cv_val_masks, _, test_volume, test_masks, _ = getData(mode = "cross_val", type = "volume")
+        for train_volumes, train_masks, val_volumes, val_masks in zip(cv_train_volume, cv_train_masks, cv_val_volume, cv_val_masks):
+            get3DSegmentation(train_volumes, train_masks, val_volumes, val_masks, test_volumes, test_masks)
             
 """
-Get 2D Segmentation
+Get 3D Segmentation
 ===============================================================================
 """
-def get2DSegmentation(train_x, train_masks, val_x, val_masks, test_x, test_masks):
+def get3DSegmentation(train_volumes, train_masks, val_volumes, val_masks, test_volumes, test_masks):
     print("SVM val \n=======")
-    points, labels, mean_int, std_int = getTrainingSet(train_x, train_masks, 0.10 )
+    points, labels, mean_int, std_int = getTrainingSet(train_volumes, train_masks, 0.10 )
     
-    val_lung, labels_val_lung  = getInputSet(val_x, val_masks, mean_int, std_int)
+    val_lung, labels_val_lung  = getInputSet(val_volumes, val_masks, mean_int, std_int)
 
     model_SVM = SVC(kernel = 'rbf', random_state = 1,gamma='auto')
     model_SVM.fit(points,labels)
     
     pred_val_lung = []
     result_val = []
-    for x, sample in zip(val_lung, val_x):
+    for x, sample in zip(val_lung, val_volumes):
         pred_lung = model_SVM.predict(np.transpose(np.vstack(x)))
         pred_val_lung.append(pred_lung) 
         result_val.append(np.hstack(showResults(pred_lung, sample)))
     
-    predictions_outer_lung, labels_outer_lung = outerLungPrediction(val_x, val_masks)
+    predictions_outer_lung, labels_outer_lung = outerLungPrediction(val_volumes, val_masks)
     dice, jaccard, matrix = getPerformanceMetrics(np.hstack(result_val), np.hstack(labels_val_lung), predictions_outer_lung, labels_outer_lung)
     print("The dice value is %.2f and the jaccard value is %.2f" % (dice, jaccard))
 
     print("SVM test \n=======")
-    test_lung, labels_test_lung  = getInputSet(test_x, test_masks, mean_int, std_int)
+    test_lung, labels_test_lung  = getInputSet(test_volumes, test_masks, mean_int, std_int)
     
     pred_test_lung = []
     result_test = []
-    for x, sample in zip(test_lung, test_x):
+    for x, sample in zip(test_lung, test_volumes):
         pred_lung = model_SVM.predict(np.transpose(np.vstack(x)))
         pred_test_lung.append(pred_lung) 
         result_test.append(np.hstack(showResults(pred_lung, sample)))
 
-    predictions_outer_lung, labels_outer_lung = outerLungPrediction(test_x, test_masks)
+    predictions_outer_lung, labels_outer_lung = outerLungPrediction(test_volumes, test_masks)
     dice, jaccard, matrix = getPerformanceMetrics(np.hstack(result_test), np.hstack(labels_test_lung), predictions_outer_lung, labels_outer_lung)
     print("The dice value is %.2f and the jaccard value is %.2f" % (dice, jaccard))
 
@@ -76,29 +81,22 @@ def showResults(prediction_lung, sample):
     props = regionprops(label_image)
     areas = [r.area for r in props]
     areas.sort()
-    
-    circle = np.zeros(np.shape(sample), np.uint8)
-    cv.circle(circle, (int(51/2),int(51/2)),int((51/2)*0.20),1, -1)
+        
     
     for l in range(1,np.max(label_image)): 
-        if (1 not in np.unique(circle[label_image == l])):
+        if props[l-1]['area'] < 0.75 * areas[-1]:
             result[label_image == l] = 0
-        elif props[l-1]['area'] < 0.15 * areas[-1]:
-            result[label_image == l] = 0
-            
-
-    plt.imshow(result, cmap = "gray")
-    plt.show()  
-    plt.imshow(sample, cmap = "gray")
-    plt.show()
     
-
+    #plt.imshow(result, cmap = "gray")
+    #plt.show()  
+    #plt.imshow(sample, cmap = "gray")
+    #plt.show()
+    
     """
     #Resulta pior
     result = cv.medianBlur(result,3)
     """
     return result[lung_mask == 1]
-
 """
 Separate Features
 ==============================================================================
@@ -263,11 +261,11 @@ def getInputSet(nodules, masks,mean_int, std_int):
     Vmed_px = []
     mask_px = []
     
-    for nodule, norm_nodule, si, cv, v_med, mask in zip(nodules,norm_nodules, SI_nodules, CV_nodules, Vmed_nodules, masks) :
+    for nodule, norm_nodule, si, cv_value, v_med, mask in zip(nodules,norm_nodules, SI_nodules, CV_nodules, Vmed_nodules, masks) :
         lung_mask = getLungMask(nodule)
         masked_nodules.append(norm_nodule[lung_mask == 1])
         masked_SI.append(si[lung_mask == 1])
-        masked_CV.append(cv[lung_mask == 1])
+        masked_CV.append(cv_value[lung_mask == 1])
         masked_Vmed.append(v_med[lung_mask == 1])
         masked_gt.append(mask[lung_mask == 1])
         
@@ -339,4 +337,5 @@ def getPerformanceMetrics(predictions_lung, labels_lung, predictions_outer_lung,
     
     return dice, jaccard, matrix
 
-run("cross_val")
+run()
+

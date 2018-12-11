@@ -2,8 +2,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.ndimage import gaussian_filter
 from skimage.feature import hessian_matrix, hessian_matrix_eigvals
-from get_data import getData
-
 
 
 # Multiscale Gaussian smoothing using sigm in the range 0.5 to 3.5
@@ -23,25 +21,32 @@ def gaussianSmooth(nodules):
     return smooth_nodules
 
 # 2. Compute the Hessian matrix and eig values
+# ============================================
+"""
+Hessian matrix:
+    
+Describes the 2nd order local image intensity variations around the selected 
+voxel. For the obtained Hessian matrix, eigenvector decomposition extracts an 
+orthonormal coordinate system that is aligned with the second order structure 
+of the image. Having the eigenvalues and knowing the (assumed) model of the 
+structure to be detected and the resulting theoretical behavior of the eigenvalues, 
+the decision can be made if the analyzed voxel belongs to the structure being searched.
 
+Eigen values:
+
+Eigenvalues give information about a matrix; the Hessian matrix contains geometric 
+information about thesurface z = f(x, y). We’re going to use the eigenvalues of 
+the Hessian matrix to get geometric information about the surface   
+"""
+
+"""
+The eigenvalues of the Hessian matrix, in decreasing order. The eigenvalues are 
+the leading dimension. That is, eigs[i, j, k] contains the ith-largest eigenvalue 
+at position (j, k).
+"""
 def getEig(image):
-    [gx, gy, gz] = np.gradient(image)
-    [gxx, gxy, gxz] = np.gradient(gx)
-    [gxy, gyy, gyz] = np.gradient(gy)
-    [gxz, gyz, gzz] = np.gradient(gy)
-    
-    eig_vals = np.asarray([[[np.array([0.0,0.0,0.0]) for col in range(51)] for col in range(51)] for row in range(51)])
-
-    for i in range(len(image)):
-        for j in range(len(image)):
-            for k in range(len(image)):
-                row_1 = [gxx[i,j,k], gxy[i,j,k], gxz[i,j,k]]
-                row_2 = [gxy[i,j,k], gyy[i,j,k], gyz[i,j,k]]
-                row_3 = [gxz[i,j,k], gyz[i,j,k], gzz[i,j,k]]
-                eig_vals[i,j,k] = np.asarray(np.linalg.eigvals([row_1, row_2, row_3]))
-            
-    
-    return eig_vals
+    Hxx, Hxy, Hyy = hessian_matrix(image, order="xy")
+    return hessian_matrix_eigvals(Hxx, Hxy, Hyy)
 
 def plotEig(nodule_eig):
     lower_eig = nodule_eig[0][1]
@@ -91,31 +96,18 @@ def plotImage(image):
 
 def getSI(eig_nodules):
     SI_nodules = [] 
-    i = 0
+    
     for all_sigmas_nodule in eig_nodules:
-        print("SI %.0f", i)
         all_SI = []
         for s in range(len(all_sigmas_nodule)):
             nodule = all_sigmas_nodule[s]
-            lower_eig = nodule[:,:,:,2]
-            higher_eig = nodule[:,:,:,0]
+            lower_eig = nodule[1]
+            higher_eig = nodule[0]
             shape_indexes = (2/np.pi) * np.arctan((lower_eig + higher_eig)/(lower_eig - higher_eig))    
             all_SI.append(shape_indexes)
-        
-        SI_nodule = np.zeros((51,51,51))
-        for i in range(51):
-            for j in range(51):
-                 for l in range(51):
-                     values = []
-                     for k in range(len(all_sigmas_nodule)):
-                         si = all_SI[k]
-                         print(np.shape(si))
-                         px = si[i,j,l]
-                         values.append(px)
-                     SI_nodule[i][j][l] = np.max(values)
-    
+        SI_nodule = np.max(all_SI, axis = 0)
         SI_nodules.append(SI_nodule)
-        i +=1
+    
     return SI_nodules
 
 # 3.2 Curvedness approach 
@@ -124,29 +116,17 @@ def getSI(eig_nodules):
 
 def getCV(eig_nodules):
     CV_nodules = []
-    i = 0
     for all_sigmas_nodule in eig_nodules:
-        print("CV %.0f", i)
         all_CV = []
         for s in range(len(all_sigmas_nodule)):
             nodule = all_sigmas_nodule[s]
-            lower_eig = nodule[:,:,:,2]
-            higher_eig = nodule[:,:,:,0]
+            lower_eig = nodule[1]
+            higher_eig = nodule[0]
             curvedness = np.sqrt(lower_eig**2 + higher_eig**2)    
             all_CV.append(curvedness)
         
-        CV_nodule = np.zeros((51,51,51))
-        for i in range(51):
-            for j in range(51):
-                for l in range(51):
-                    values = []
-                    for k in range(len(all_sigmas_nodule)):
-                        cv_ = all_CV[k]
-                        px = cv_[i,j,l]
-                        values.append(px)
-                    CV_nodule[i][j][l] = np.max(values)
+        CV_nodule = np.max(all_CV, axis = 0)
         CV_nodules.append(CV_nodule)
-        i += 1
     return CV_nodules
     
 # 3.3 Central adaptive miedialness approach 
@@ -154,52 +134,18 @@ def getCV(eig_nodules):
 
 def getVmed(eig_nodules):     
     Vmed_nodules = []
-    i = 0
     for all_sigmas_nodule in eig_nodules:
-        print("Vmed %.0f", i)
         all_Vmed = []
         for s in range(len(all_sigmas_nodule)):
             nodule = all_sigmas_nodule[s]
-            lower_eig = nodule[:,:,:,2]
-            int_eig = nodule[:,:,:,1]
-            higher_eig = nodule[:,:,:,0]
-            Vmed = np.zeros((51,51,51))
+            lower_eig = nodule[1]
+            higher_eig = nodule[0]
+            Vmed = np.zeros((51,51))
             for i in range(len(Vmed)):
                 for j in range(len(Vmed)):
-                    for l in range(len(Vmed)):
-                        if lower_eig[i][j][l] + higher_eig[i][j][l] < 0:
-                            Vmed[i][j][l] = -(int_eig[i][j][l]/lower_eig[i][j][l]) * (int_eig[i][j][l] + lower_eig[i][j][l])
+                    if lower_eig[i][j] + higher_eig[i][j] < 0:
+                        Vmed[i][j] = -(higher_eig[i][j]/lower_eig[i][j]) * (higher_eig[i][j] + lower_eig[i][j])
             all_Vmed.append(Vmed)
-        Vmed_nodule = np.zeros((51,51,51))
-        for i in range(51):
-            for j in range(51):
-                 for j in range(51):
-                     values = []
-                     for k in range(len(all_sigmas_nodule)):
-                         vmed = all_Vmed[k]
-                         px = vmed[i,j,l]
-                         values.append(px)
-                     Vmed_nodule[i][j][l] = np.max(values)
+        Vmed_nodule = np.max(all_Vmed, axis = 0)
         Vmed_nodules.append(Vmed_nodule)
-        i += 1
     return Vmed_nodules
-
-train_volumes, _, val_volumes, _, test_volumes, _,= getData(mode = "default", type_ = "volume")
-smooth_nodules = gaussianSmooth(train_volumes)
-eigen_nodules = getEigNodules(smooth_nodules)
-SI_train = getSI (eigen_nodules)
-CV_train = getCV(eigen_nodules)
-Vmed_train = getVmed(eigen_nodules)
-
-smooth_nodules = gaussianSmooth(val_volumes)
-eigen_nodules = getEigNodules(smooth_nodules)
-SI_val = getSI (eigen_nodules)
-CV_val = getCV(eigen_nodules)
-Vmed_val = getVmed(eigen_nodules)
-
-
-smooth_nodules = gaussianSmooth(test_volumes)
-eigen_nodules = getEigNodules(smooth_nodules)
-SI_test = getSI (eigen_nodules)
-CV_test = getCV(eigen_nodules)
-Vmed_test = getVmed(eigen_nodules)
