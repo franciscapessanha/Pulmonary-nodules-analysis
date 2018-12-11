@@ -63,7 +63,6 @@ Gabor Filter (frequency and orientation) Features
 """
 def calculateGaborFilters(nodules, masks):
     filtered_ims = []
-    
     #for i in range(len(slices)):
     for nodule, mask in zip(nodules, masks):
         for theta in (0,45,90,135):
