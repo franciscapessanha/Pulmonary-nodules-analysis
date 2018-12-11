@@ -26,21 +26,42 @@ Returns:
     * chull: image of the mask after applied the convex hull - boolean type matrix
 """
 
-def getLungMask(nodule):
-    nodule_mask = cv.inRange(nodule, 0, 0.57)
-    kernel_ellipse = cv.getStructuringElement(cv.MORPH_ELLIPSE, (3,3))
-    mask = cv.medianBlur(nodule_mask,3)
-    dilated_mask = cv.dilate(mask,kernel_ellipse,iterations = 1)
-    erode_mask = cv.erode(dilated_mask,kernel_ellipse,iterations = 2)    
+def getLungMask(nodule, type_ = "slice"):
     
-    _, contours,_= cv.findContours(erode_mask,cv.RETR_TREE,cv.CHAIN_APPROX_SIMPLE)
-    contours = sorted(contours, key = cv.contourArea, reverse = True) 
-    contour = contours[0]
+    if type_ == "slice":
+        nodule_mask = cv.inRange(nodule, 0, 0.57)
+        kernel_ellipse = cv.getStructuringElement(cv.MORPH_ELLIPSE, (3,3))
+        mask = cv.medianBlur(nodule_mask,3)
+        dilated_mask = cv.dilate(mask,kernel_ellipse,iterations = 1)
+        erode_mask = cv.erode(dilated_mask,kernel_ellipse,iterations = 2)    
+        
+        _, contours,_= cv.findContours(erode_mask,cv.RETR_TREE,cv.CHAIN_APPROX_SIMPLE)
+        contours = sorted(contours, key = cv.contourArea, reverse = True) 
+        contour = contours[0]
+    
+        filled_contour = np.zeros(np.asarray(nodule).shape, np.uint8)
+        cv.fillPoly(filled_contour, pts = np.asarray(contour), color = 1)
+    
+        hull = convex_hull_image(filled_contour)  
+    
+    elif type_ == "volume":
+        hull = np.zeros((51,51,51), np.uint8)
+        for slice_ in range(len(nodule)):
 
-    filled_contour = np.zeros(np.asarray(nodule).shape, np.uint8)
-    cv.fillPoly(filled_contour, pts = np.asarray(contour), color = 1)
-
-    hull = convex_hull_image(filled_contour)  
+            nodule_mask = cv.inRange(nodule[slice_,:,:], 0, 0.57)
+            kernel_ellipse = cv.getStructuringElement(cv.MORPH_ELLIPSE, (3,3))
+            mask = cv.medianBlur(nodule_mask,3)
+            dilated_mask = cv.dilate(mask,kernel_ellipse,iterations = 1)
+            erode_mask = cv.erode(dilated_mask,kernel_ellipse,iterations = 2)    
+            
+            _, contours,_= cv.findContours(erode_mask,cv.RETR_TREE,cv.CHAIN_APPROX_SIMPLE)
+            contours = sorted(contours, key = cv.contourArea, reverse = True) 
+            if len(contours) > 0: 
+                contour = contours[0]
+                filled_contour = np.zeros(np.asarray(nodule[slice_,:,:]).shape, np.uint8)
+                cv.fillPoly(filled_contour, pts = np.asarray(contour), color = 1)        
+                hull[slice_,:,:] = convex_hull_image(filled_contour) 
+            
 
     return hull
 

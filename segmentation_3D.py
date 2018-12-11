@@ -47,7 +47,7 @@ def get3DSegmentation(train_volumes, train_masks, val_volumes, val_masks, test_v
     for x, sample in zip(val_lung, val_volumes):
         pred_lung = model_SVM.predict(np.transpose(np.vstack(x)))
         pred_val_lung.append(pred_lung) 
-        result_val.append(np.hstack(showResults(pred_lung, sample)))
+        result_val.append(np.hstack(showResults(pred_lung, sample, "volume")))
     
     predictions_outer_lung, labels_outer_lung = outerLungPrediction(val_volumes, val_masks)
     dice, jaccard, matrix = getPerformanceMetrics(np.hstack(result_val), np.hstack(labels_val_lung), predictions_outer_lung, labels_outer_lung)
@@ -67,36 +67,50 @@ def get3DSegmentation(train_volumes, train_masks, val_volumes, val_masks, test_v
     dice, jaccard, matrix = getPerformanceMetrics(np.hstack(result_test), np.hstack(labels_test_lung), predictions_outer_lung, labels_outer_lung)
     print("The dice value is %.2f and the jaccard value is %.2f" % (dice, jaccard))
 
+
 """
-Show results
+Process results 
 ===============================================================================
-"""            
-def showResults(prediction_lung, sample):
-    result = np.zeros(np.shape(sample), np.uint8)
-    lung_mask = getLungMask(sample)
-    result[lung_mask == 1] = prediction_lung
-    
-    
-    label_image = label(result)
+"""   
+def processResult(prediction, sample, lung_mask):
+  
+    label_image = label(prediction)
     props = regionprops(label_image)
     areas = [r.area for r in props]
     areas.sort()
         
-    
     for l in range(1,np.max(label_image)): 
         if props[l-1]['area'] < 0.75 * areas[-1]:
-            result[label_image == l] = 0
+            prediction[label_image == l] = 0
     
-    #plt.imshow(result, cmap = "gray")
-    #plt.show()  
-    #plt.imshow(sample, cmap = "gray")
-    #plt.show()
+     #plt.imshow(result, cmap = "gray")
+     #plt.show()  
+     #plt.imshow(sample, cmap = "gray")
+     #plt.show()
+        
+    return prediction
+"""
+Show results - AMOSTRA A AMOSTRA
+===============================================================================
+"""            
+def showResults(prediction_lung, sample, type_ = "slice"):
     
-    """
-    #Resulta pior
-    result = cv.medianBlur(result,3)
-    """
-    return result[lung_mask == 1]
+    if type_ == "slice":
+        lung_mask = getLungMask(sample)
+        prediction = np.zeros((51,51,51), np.uint8)
+        prediction[lung_mask == 1] = prediction_lung
+        result = processResult(prediction, sample, lung_mask)
+        return result[lung_mask == 1]
+    
+    if type_ == "volume":
+        result = np.zeros((51,51,51), np.uint8)
+        prediction = np.zeros((51,51,51), np.uint8)
+        lung_mask = getLungMask(sample, "volume")
+        prediction[lung_mask == 1] = prediction_lung
+        for slice_ in range(len(sample)):
+            result[slice_,:,:] = processResult(prediction[slice_,:,:],slice_, lung_mask[slice_,:,:])
+        
+        return result[lung_mask == 1]
 """
 Separate Features
 ==============================================================================
@@ -118,7 +132,7 @@ def separateFeatures(sample_features, sample, mask):
    features_nn = [] 
    for feature in sample_features:
        features_n.append(feature[mask == 1])
-       lung_mask= getLungMask(sample) - mask
+       lung_mask= getLungMask(sample, type_ = "volume") - mask
        features_nn.append(feature[lung_mask==1])
     
    features_n = np.asarray(features_n)
@@ -210,7 +224,7 @@ Get Training Set
 ==============================================================================
 """
 
-def getTrainingSet(train_volumes, train_volumes_masks, number_of_pixel):
+def getTrainingSet(train_volumes, train_masks, number_of_pixel):
     mean_int, std_int = normalizeImages(train_volumes)
     norm_volumes = [(nodule - mean_int)/std_int for nodule in train_volumes]
     
@@ -223,7 +237,7 @@ def getTrainingSet(train_volumes, train_volumes_masks, number_of_pixel):
     for i in range(len(train_volumes)):
         sample_features = [norm_volumes[i], SI_nodules[i], CV_nodules[i], Vmed_nodules[i]]
         sample = train_volumes[i]
-        mask = train_volumes_masks[i]
+        mask = train_masks[i]
     
         features_n, features_nn = separateFeatures(sample_features, sample, mask)
     
@@ -262,7 +276,7 @@ def getInputSet(nodules, masks,mean_int, std_int):
     mask_px = []
     
     for nodule, norm_nodule, si, cv_value, v_med, mask in zip(nodules,norm_nodules, SI_nodules, CV_nodules, Vmed_nodules, masks) :
-        lung_mask = getLungMask(nodule)
+        lung_mask = getLungMask(nodule, type_ = "volume")
         masked_nodules.append(norm_nodule[lung_mask == 1])
         masked_SI.append(si[lung_mask == 1])
         masked_CV.append(cv_value[lung_mask == 1])
@@ -287,7 +301,7 @@ def outerLungPrediction(nodules, masks):
     labels_outer_lung = []
     predictions_outer_lung = []
     for nodule, mask in zip(nodules, masks):
-        lung_mask = getLungMask(nodule)
+        lung_mask = getLungMask(nodule,  type_ = "volume")
         
         labels_outer_lung.append(mask[lung_mask==0])
         predictions_outer_lung.append(np.zeros(np.shape(nodule[lung_mask==0])))
