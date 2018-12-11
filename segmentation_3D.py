@@ -210,20 +210,20 @@ Get Training Set
 ==============================================================================
 """
 
-def getTrainingSet(train_slices, train_slices_masks, number_of_pixel):
-    mean_int, std_int = normalizeImages(train_slices)
-    norm_slices = [(nodule - mean_int)/std_int for nodule in train_slices]
+def getTrainingSet(train_volumes, train_volumes_masks, number_of_pixel):
+    mean_int, std_int = normalizeImages(train_volumes)
+    norm_volumes = [(nodule - mean_int)/std_int for nodule in train_volumes]
     
-    smooth_img = gaussianSmooth(norm_slices)
+    smooth_img = gaussianSmooth(norm_volumes)
     eigen_nodules = getEigNodules(smooth_img)
     SI_nodules = getSI (eigen_nodules)
     CV_nodules = getCV(eigen_nodules)
     Vmed_nodules = getVmed(eigen_nodules)
     
-    for i in range(len(train_slices)):
-        sample_features = [norm_slices[i], SI_nodules[i], CV_nodules[i], Vmed_nodules[i]]
-        sample = train_slices[i]
-        mask = train_slices_masks[i]
+    for i in range(len(train_volumes)):
+        sample_features = [norm_volumes[i], SI_nodules[i], CV_nodules[i], Vmed_nodules[i]]
+        sample = train_volumes[i]
+        mask = train_volumes_masks[i]
     
         features_n, features_nn = separateFeatures(sample_features, sample, mask)
     
