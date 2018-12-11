@@ -91,15 +91,14 @@ def plotImage(image):
 
 def getSI(eig_nodules):
     SI_nodules = [] 
-    
+    i = 0
     for all_sigmas_nodule in eig_nodules:
-        print("entrou")
+        print("SI %.0f", i)
         all_SI = []
         for s in range(len(all_sigmas_nodule)):
             nodule = all_sigmas_nodule[s]
-            lower_eig = nodule[:][:][:][2]
-            print(np.shape(lower_eig))
-            higher_eig = nodule[:][:][:][0]
+            lower_eig = nodule[:,:,:,2]
+            higher_eig = nodule[:,:,:,0]
             shape_indexes = (2/np.pi) * np.arctan((lower_eig + higher_eig)/(lower_eig - higher_eig))    
             all_SI.append(shape_indexes)
         
@@ -116,7 +115,7 @@ def getSI(eig_nodules):
                      SI_nodule[i][j][l] = np.max(values)
     
         SI_nodules.append(SI_nodule)
-    
+        i +=1
     return SI_nodules
 
 # 3.2 Curvedness approach 
@@ -125,12 +124,14 @@ def getSI(eig_nodules):
 
 def getCV(eig_nodules):
     CV_nodules = []
+    i = 0
     for all_sigmas_nodule in eig_nodules:
+        print("CV %.0f", i)
         all_CV = []
         for s in range(len(all_sigmas_nodule)):
             nodule = all_sigmas_nodule[s]
-            lower_eig = nodule[:][:][:][2]
-            higher_eig = nodule[:][:][:][0]
+            lower_eig = nodule[:,:,:,2]
+            higher_eig = nodule[:,:,:,0]
             curvedness = np.sqrt(lower_eig**2 + higher_eig**2)    
             all_CV.append(curvedness)
         
@@ -145,6 +146,7 @@ def getCV(eig_nodules):
                         values.append(px)
                     CV_nodule[i][j][l] = np.max(values)
         CV_nodules.append(CV_nodule)
+        i += 1
     return CV_nodules
     
 # 3.3 Central adaptive miedialness approach 
@@ -152,13 +154,15 @@ def getCV(eig_nodules):
 
 def getVmed(eig_nodules):     
     Vmed_nodules = []
+    i = 0
     for all_sigmas_nodule in eig_nodules:
+        print("Vmed %.0f", i)
         all_Vmed = []
         for s in range(len(all_sigmas_nodule)):
             nodule = all_sigmas_nodule[s]
-            lower_eig = nodule[:][:][:][2]
-            int_eig = nodule[:][:][:][1]
-            higher_eig = nodule[:][:][:][0]
+            lower_eig = nodule[:,:,:,2]
+            int_eig = nodule[:,:,:,1]
+            higher_eig = nodule[:,:,:,0]
             Vmed = np.zeros((51,51,51))
             for i in range(len(Vmed)):
                 for j in range(len(Vmed)):
@@ -177,15 +181,13 @@ def getVmed(eig_nodules):
                          values.append(px)
                      Vmed_nodule[i][j][l] = np.max(values)
         Vmed_nodules.append(Vmed_nodule)
+        i += 1
     return Vmed_nodules
 
-#train_volumes, _, val_volumes, val_masks, test_volumes, _ = getData(mode = "default", type = "volume")
-#smooth_nodules = gaussianSmooth(train_volumes)
-
+train_volumes, _, val_volumes, _, test_volumes, _,= getData(mode = "default", type_ = "volume")
+smooth_nodules = gaussianSmooth(train_volumes)
 eigen_nodules = getEigNodules(smooth_nodules)
 SI_train = getSI (eigen_nodules)
-
-#%%%
 CV_train = getCV(eigen_nodules)
 Vmed_train = getVmed(eigen_nodules)
 

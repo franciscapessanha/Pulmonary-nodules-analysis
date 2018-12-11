@@ -17,14 +17,14 @@ Returns:
     * test: list with the val nodule middle slices and corresponding masks and labels
 """
 
-def getData(mode = "default", type = "slice"):
+def getData(mode = "default", type_ = "slice"):
    nodules, masks, metadata = loadData()
    x_train, y_train, masks_train, x_test, y_test, masks_test, x_val, y_val, masks_val = getSets(nodules, metadata, masks, mode) 
-   if type == "slice":
+   if type_ == "slice":
        train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks = getMiddleImages(x_train, masks_train, x_test, masks_test, x_val, masks_val, mode )  
        return train_slices, train_slices_masks, y_train, val_slices, val_slices_masks, y_val, test_slices, test_slices_masks, y_test   
    
-   elif type == "volume":
+   elif type_ == "volume": #acrescentar y
        train_volumes, train_masks, val_volumes, val_masks, test_volumes, test_masks = getVolume(x_train, masks_train, x_test, masks_test, x_val, masks_val)
        return train_volumes, train_masks, val_volumes, val_masks, test_volumes, test_masks
 

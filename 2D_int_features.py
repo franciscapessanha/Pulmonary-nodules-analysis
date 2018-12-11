@@ -2,8 +2,6 @@ import numpy as np
 from skimage.filters.rank import entropy
 import cv2 as cv
 from skimage.measure import label, regionprops
-from skimage.filters.rank import entropy
-from skimage.morphology import disk
 
 def getIntensityFeatures(train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks):
     train_int = np.vstack(calcIntensityFeatures(train_slices, train_slices_masks))
@@ -22,8 +20,6 @@ def calcCircularFeatures(nodules, masks):
         circle_0 = np.zeros(np.shape(nodule), np.uint8)
         circle_1 = np.zeros(np.shape(nodule), np.uint8)
         circle_2 = np.zeros(np.shape(nodule), np.uint8)
-        circle_3 = np.zeros(np.shape(nodule), np.uint8)
-        circle_4 = np.zeros(np.shape(nodule), np.uint8)
        
         region = label(mask)
         props = regionprops(region)
@@ -52,11 +48,7 @@ def calcIntensityFeatures(nodules, masks):
     intensity_features = []
     for nodule, mask in zip(nodules, masks):
         mean = np.mean(nodule[mask == 1])
-        #max_ = np.max(nodule[mask == 1])
-        #min_ = np.min(nodule[mask == 1])
-        #median = np.median(nodule[mask == 1])
         std = np.std(nodule[mask == 1])
-        #ent = entropy(nodule/3,disk(5))
         intensity_features.append([mean, std])  
     
     return intensity_features

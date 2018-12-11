@@ -77,7 +77,6 @@ def calculateGaborFilters(nodules, masks):
 
 def reshapeGabor(filtered_ims, nodules):
     gabor_results=[]
-    last_gabor = []
     
     for j in range(0,len(nodules)):
         each_img_nodule = filtered_ims[36*j:36*j+36]
