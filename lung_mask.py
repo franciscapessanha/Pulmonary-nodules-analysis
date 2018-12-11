@@ -37,12 +37,11 @@ def getLungMask(nodule, type_ = "slice"):
         
         _, contours,_= cv.findContours(erode_mask,cv.RETR_TREE,cv.CHAIN_APPROX_SIMPLE)
         contours = sorted(contours, key = cv.contourArea, reverse = True) 
-        contour = contours[0]
-    
-        filled_contour = np.zeros(np.asarray(nodule).shape, np.uint8)
-        cv.fillPoly(filled_contour, pts = np.asarray(contour), color = 1)
-    
-        hull = convex_hull_image(filled_contour)  
+        if len(contours) > 0: 
+            contour = contours[0]
+            filled_contour = np.zeros(np.asarray(nodule).shape, np.uint8)
+            cv.fillPoly(filled_contour, pts = np.asarray(contour), color = 1)
+            hull = convex_hull_image(filled_contour)  
     
     elif type_ == "volume":
         hull = np.zeros((51,51,51), np.uint8)
