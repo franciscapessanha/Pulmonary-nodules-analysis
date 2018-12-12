@@ -12,7 +12,6 @@ from matplotlib import pyplot as plt
 from hessian_3D import getEigNodules, gaussianSmooth, getSI, getCV, getVmed
 from sklearn.svm import SVC
 from skimage.measure import label, regionprops
-import cv2 as cv
 """
 Run
 ===============================================================================
@@ -21,7 +20,7 @@ Run
 def run(mode = "default"):
     if mode == "default": 
         train_volumes, train_masks, val_volumes, val_masks, test_volumes, test_masks = getData(mode = "default", type_ = "volume")
-        get3DSegmentation(train_volumes[0:2], train_masks[0:2], val_volumes[0:2], val_masks[0:2], test_volumes[0:2], test_masks[0:2])
+        get3DSegmentation(train_volumes, train_masks, val_volumes, val_masks, test_volumes, test_masks)
         
     elif mode == "cross_val":
     
@@ -34,9 +33,10 @@ Get 3D Segmentation
 ===============================================================================
 """
 def get3DSegmentation(train_volumes, train_masks, val_volumes, val_masks, test_volumes, test_masks):
-    print("SVM val \n=======")
-    points, labels, mean_int, std_int = getTrainingSet(train_volumes, train_masks, 0.10 )
     
+    print("1. Get Training set")
+    points, labels, mean_int, std_int = getTrainingSet(train_volumes, train_masks, 0.10 )
+    print("2. Get Input set")
     val_lung, labels_val_lung  = getInputSet(val_volumes, val_masks, mean_int, std_int)
 
     model_SVM = SVC(kernel = 'rbf', random_state = 1,gamma='auto')
@@ -51,9 +51,10 @@ def get3DSegmentation(train_volumes, train_masks, val_volumes, val_masks, test_v
     
     predictions_outer_lung, labels_outer_lung = outerLungPrediction(val_volumes, val_masks)
     dice, jaccard, matrix = getPerformanceMetrics(np.hstack(result_val), np.hstack(labels_val_lung), predictions_outer_lung, labels_outer_lung)
+    print("3. SVM val \n=======")
     print("The dice value is %.2f and the jaccard value is %.2f" % (dice, jaccard))
 
-    print("SVM test \n=======")
+    print("4. SVM test \n=======")
     test_lung, labels_test_lung  = getInputSet(test_volumes, test_masks, mean_int, std_int)
     
     pred_test_lung = []
@@ -61,7 +62,7 @@ def get3DSegmentation(train_volumes, train_masks, val_volumes, val_masks, test_v
     for x, sample in zip(test_lung, test_volumes):
         pred_lung = model_SVM.predict(np.transpose(np.vstack(x)))
         pred_test_lung.append(pred_lung) 
-        result_test.append(np.hstack(showResults(pred_lung, sample)))
+        result_test.append(np.hstack(showResults(pred_lung, sample, "volume")))
 
     predictions_outer_lung, labels_outer_lung = outerLungPrediction(test_volumes, test_masks)
     dice, jaccard, matrix = getPerformanceMetrics(np.hstack(result_test), np.hstack(labels_test_lung), predictions_outer_lung, labels_outer_lung)
@@ -93,7 +94,7 @@ def processResult(prediction, sample, lung_mask):
 Show results - AMOSTRA A AMOSTRA
 ===============================================================================
 """            
-def showResults(prediction_lung, sample, type_ = "slice"):
+def showResults(prediction_lung, sample, type_):
     
     if type_ == "slice":
         lung_mask = getLungMask(sample)
