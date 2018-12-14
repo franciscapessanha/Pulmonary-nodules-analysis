@@ -24,7 +24,7 @@ def run(mode = "default"):
         
     elif mode == "cross_val":
     
-        cv_train_volumes, cv_train_masks, _ , cv_val_volumes, cv_val_masks, _, test_volumes, test_masks, _ = getData(mode = "cross_val", type = "volume")
+        cv_train_volumes, cv_train_masks, _ , cv_val_volumes, cv_val_masks, _, test_volumes, test_masks, _ = getData(mode = "cross_val", type_ = "volume")
         for train_volumes, train_masks, val_volumes, val_masks in zip(cv_train_volumes, cv_train_masks, cv_val_volumes, cv_val_masks):
             get3DSegmentation(train_volumes, train_masks, val_volumes, val_masks, test_volumes, test_masks)
             
@@ -354,5 +354,5 @@ def getPerformanceMetrics(predictions_lung, labels_lung, predictions_outer_lung,
     
     return dice, jaccard, matrix, accuracy 
 
-run()
+run(mode = "cross_val")
 
