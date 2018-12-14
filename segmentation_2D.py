@@ -3,7 +3,7 @@ from get_data import getData
 import numpy as np
 from lung_mask import getLungMask
 from matplotlib import pyplot as plt
-from two_hessian import getEigNodules, gaussianSmooth, getSI, getCV, getVmed
+from hessian_2D import getEigNodules, gaussianSmooth, getSI, getCV, getVmed
 from sklearn.svm import SVC
 from skimage.measure import label, regionprops
 import cv2 as cv
@@ -39,34 +39,34 @@ def get2DSegmentation(train_x, train_masks, val_x, val_masks, test_x, test_masks
     
     pred_val_lung = []
     result_val = []
-    for x, sample in zip(val_lung, val_x):
+    for x, sample, mask in zip(val_lung, val_x, val_masks):
         pred_lung = model_SVM.predict(np.transpose(np.vstack(x)))
         pred_val_lung.append(pred_lung) 
-        result_val.append(np.hstack(showResults(pred_lung, sample)))
+        result_val.append(np.hstack(showResults(pred_lung, sample, mask)))
     
     predictions_outer_lung, labels_outer_lung = outerLungPrediction(val_x, val_masks)
-    dice, jaccard, matrix = getPerformanceMetrics(np.hstack(result_val), np.hstack(labels_val_lung), predictions_outer_lung, labels_outer_lung)
-    print("The dice value is %.2f and the jaccard value is %.2f" % (dice, jaccard))
+    dice, jaccard, matrix, accuracy = getPerformanceMetrics(np.hstack(result_val), np.hstack(labels_val_lung), predictions_outer_lung, labels_outer_lung)
+    print("The dice value is %.2f and the jaccard value is %.2f. The accucaracy is %.2f" % (dice, jaccard, accuracy))
 
     print("SVM test \n=======")
     test_lung, labels_test_lung  = getInputSet(test_x, test_masks, mean_int, std_int)
     
     pred_test_lung = []
     result_test = []
-    for x, sample in zip(test_lung, test_x):
+    for x, sample, mask in zip(test_lung, test_x, test_masks):
         pred_lung = model_SVM.predict(np.transpose(np.vstack(x)))
         pred_test_lung.append(pred_lung) 
-        result_test.append(np.hstack(showResults(pred_lung, sample)))
+        result_test.append(np.hstack(showResults(pred_lung, sample, mask)))
 
     predictions_outer_lung, labels_outer_lung = outerLungPrediction(test_x, test_masks)
-    dice, jaccard, matrix = getPerformanceMetrics(np.hstack(result_test), np.hstack(labels_test_lung), predictions_outer_lung, labels_outer_lung)
-    print("The dice value is %.2f and the jaccard value is %.2f" % (dice, jaccard))
+    dice, jaccard, matrix, accuracy = getPerformanceMetrics(np.hstack(result_test), np.hstack(labels_test_lung), predictions_outer_lung, labels_outer_lung)
+    print("The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice, jaccard, accuracy))
 
 """
 Show results
 ===============================================================================
-"""            
-def showResults(prediction_lung, sample):
+ """          
+def showResults(prediction_lung, sample, mask):
     result = np.zeros(np.shape(sample), np.uint8)
     lung_mask = getLungMask(sample)
     result[lung_mask == 1] = prediction_lung
@@ -86,17 +86,26 @@ def showResults(prediction_lung, sample):
         elif props[l-1]['area'] < 0.15 * areas[-1]:
             result[label_image == l] = 0
             
-    """
-    plt.imshow(result, cmap = "gray")
-    plt.show()  
-    plt.imshow(sample, cmap = "gray")
-    plt.show()
-    """
+    
+    #plt.imshow(result, cmap = "gray")
+    #plt.show()  
+    #plt.imshow(sample, cmap = "gray")
+    #plt.show()
 
-    """
+    
+    plot_args={}
+    plot_args['cmap']='gray'
+    
+    fig,ax = plt.subplots(1,3)
+    
+    ax[0].imshow(sample,**plot_args)
+    ax[1].imshow(mask,**plot_args) #plots the mask
+    ax[2].imshow(result,**plot_args) #plots the image
+    plt.show()
+    
+    
     #Resulta pior
     result = cv.medianBlur(result,3)
-    """
     return result[lung_mask == 1]
 
 """
@@ -332,11 +341,13 @@ def getPerformanceMetrics(predictions_lung, labels_lung, predictions_outer_lung,
     false_negatives = c_matrix_lung[0,1] + c_matrix_outer_lung[0,1]
     false_positives = c_matrix_lung[1,0] + c_matrix_outer_lung[1,0]
     true_negatives = c_matrix_lung[1,1] + c_matrix_outer_lung[1,1]
+
+    accuracy = (true_positives + true_negatives)/(true_positives + true_negatives + false_positives + false_negatives)
     
     dice = (2*true_positives/(false_positives+false_negatives+(2*true_positives)))
     jaccard = (true_positives)/(true_positives+false_positives+false_negatives)
     matrix = np.asarray([[true_positives, false_negatives], [false_positives, true_negatives]])
     
-    return dice, jaccard, matrix
+    return dice, jaccard, matrix, accuracy 
 
-run("cross_val")
+run()

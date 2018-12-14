@@ -345,12 +345,14 @@ def getPerformanceMetrics(predictions_lung, labels_lung, predictions_outer_lung,
     false_negatives = c_matrix_lung[0,1] + c_matrix_outer_lung[0,1]
     false_positives = c_matrix_lung[1,0] + c_matrix_outer_lung[1,0]
     true_negatives = c_matrix_lung[1,1] + c_matrix_outer_lung[1,1]
+
+    accuracy = (true_positives + true_negatives)/(true_positives + true_negatives + false_positives + false_negatives)
     
     dice = (2*true_positives/(false_positives+false_negatives+(2*true_positives)))
     jaccard = (true_positives)/(true_positives+false_positives+false_negatives)
     matrix = np.asarray([[true_positives, false_negatives], [false_positives, true_negatives]])
     
-    return dice, jaccard, matrix
+    return dice, jaccard, matrix, accuracy 
 
 run()
 
