@@ -95,8 +95,8 @@ def getSI(eig_nodules):
             nodule = all_sigmas_nodule[s][:]
             lower_eig = nodule[:,:,:,2]
             higher_eig = nodule[:,:,:,0]
-            shape_indexes = (2/np.pi) * np.arctan((lower_eig + higher_eig)/(lower_eig - higher_eig))    
-            all_SI.append(shape_indexes)
+            shape_indexes = (2/np.pi) * np.arctan((lower_eig + higher_eig)/((lower_eig - higher_eig)+1*10**(-12)))  
+        all_SI.append(shape_indexes)
         
         SI_nodule = np.max(all_SI, axis = 0)
         SI_nodules.append(np.squeeze(SI_nodule))
@@ -117,7 +117,7 @@ def getCV(eig_nodules):
             lower_eig = nodule[:,:,:,2]
             higher_eig = nodule[:,:,:,0]
             curvedness = np.sqrt(lower_eig**2 + higher_eig**2)    
-            all_CV.append(curvedness)
+        all_CV.append(curvedness)
         
         CV_nodule = np.max(all_CV, axis = 0)
         CV_nodules.append(np.squeeze(CV_nodule))
@@ -139,8 +139,9 @@ def getVmed(eig_nodules):
             for i in range(len(Vmed)):
                 for j in range(len(Vmed)):
                     for l in range(len(Vmed)):
-                        if lower_eig[i,j,l] + higher_eig[i,j,l] < 0:
-                            Vmed[i,j,l] = -(int_eig[i,j,l]/lower_eig[i,j,l]) * (int_eig[i,j,l] + lower_eig[i,j,l])
+                        if lower_eig[i,j,l] + higher_eig[i,j,l] < 0 and lower_eig[i,j,l] != 0:
+                            Vmed[i,j,l] = -(int_eig[i,j,l]/(lower_eig[i,j,l]+1*10**(-12))) * (int_eig[i,j,l] + lower_eig[i,j,l])
+                            
             all_Vmed.append(Vmed)
         
         Vmed_nodule = np.max(all_Vmed, axis = 0)
