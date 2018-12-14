@@ -8,11 +8,12 @@ def getIntensityFeatures(train_slices, train_slices_masks, val_slices, val_slice
     val_int = np.vstack(calcIntensityFeatures(val_slices, val_slices_masks))
     test_int = np.vstack(calcIntensityFeatures(test_slices, test_slices_masks))
     
-    train_circ = np.vstack(calcCircularFeatures(train_slices, train_slices_masks))
-    val_circ = np.vstack(calcCircularFeatures(val_slices, val_slices_masks))
-    test_circ = np.vstack(calcCircularFeatures(test_slices, test_slices_masks))
+    #train_circ = np.vstack(calcCircularFeatures(train_slices, train_slices_masks))
+    #val_circ = np.vstack(calcCircularFeatures(val_slices, val_slices_masks))
+    #test_circ = np.vstack(calcCircularFeatures(test_slices, test_slices_masks))
     
-    return train_int, val_int, test_int, train_circ, val_circ, test_circ
+    #return train_int, val_int, test_int, train_circ, val_circ, test_circ
+    return train_int, val_int, test_int
 
 def calcCircularFeatures(nodules, masks):
     circular_features = []

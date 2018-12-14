@@ -21,14 +21,19 @@ LBP Features
 def calcLBP(nodules, masks, n_points, radius):
     all_lbp = []
     metrics_lbp = []
+    
     for nodule, mask in zip(nodules, masks):
+        sample_lbp = []
         for slice_ in range(len(nodule)):
             if np.sum(mask[slice_,:,:]) != 0:
                 kernel_ellipse = cv.getStructuringElement(cv.MORPH_ELLIPSE, (1,1))
                 erode_mask = cv.erode(mask[slice_,:,:],kernel_ellipse)
-                lbp = local_binary_pattern(nodule[slice_,:,:], n_points, radius, 'var') #'ror' for rotation invariant    
-                all_lbp.append(lbp[erode_mask == 1])
-                metrics_lbp.append([np.mean(lbp[erode_mask == 1]), np.std(lbp[erode_mask == 1])])
+                lbp = local_binary_pattern(nodule[slice_,:,:], n_points, radius, 'var') #'ror' for rotation invariant 
+                sample_lbp.append(lbp[erode_mask == 1])
+        
+        all_lbp.append(sample_lbp)
+        print(np.shape(sample_lbp))
+        metrics_lbp.append([np.mean(sample_lbp), np.std(sample_lbp)])
     return all_lbp, metrics_lbp
 
 def getLBPFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks, radius = 1,n_points = 8):
@@ -46,6 +51,7 @@ Gabor Filter (frequency and orientation) Features
 def calculateGaborFilters(nodules, masks):
     filtered_ims = []
     #for i in range(len(slices)):
+    print(np.shape(nodules))
     for nodule, mask in zip(nodules, masks):
         for slice_ in range(len(nodule)):
             if np.sum(mask[slice_,:,:]) != 0:

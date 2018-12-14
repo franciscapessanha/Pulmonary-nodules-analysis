@@ -24,9 +24,9 @@ def getData(mode = "default", type_ = "slice"):
        train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks = getMiddleImages(x_train, masks_train, x_test, masks_test, x_val, masks_val, mode )  
        return train_slices, train_slices_masks, y_train, val_slices, val_slices_masks, y_val, test_slices, test_slices_masks, y_test   
    
-   elif type_ == "volume": #acrescentar y
+   elif type_ == "volume":
        train_volumes, train_masks, val_volumes, val_masks, test_volumes, test_masks = getVolume(x_train, masks_train, x_test, masks_test, x_val, masks_val)
-       return train_volumes, train_masks, val_volumes, val_masks, test_volumes, test_masks
+       return train_volumes, train_masks,y_train, val_volumes, val_masks,y_val, test_volumes, test_masks, y_test
 
 """
 Find Extensions
