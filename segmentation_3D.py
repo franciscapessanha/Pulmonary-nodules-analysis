@@ -24,8 +24,8 @@ def run(mode = "default"):
         
     elif mode == "cross_val":
     
-        cv_train_volumes, cv_train_masks, _ , cv_val_volues, cv_val_masks, _, test_volumes, test_masks, _ = getData(mode = "cross_val", type = "volume")
-        for train_volumes, train_masks, val_volumes, val_masks in zip(cv_train_volume, cv_train_masks, cv_val_volume, cv_val_masks):
+        cv_train_volumes, cv_train_masks, _ , cv_val_volumes, cv_val_masks, _, test_volumes, test_masks, _ = getData(mode = "cross_val", type = "volume")
+        for train_volumes, train_masks, val_volumes, val_masks in zip(cv_train_volumes, cv_train_masks, cv_val_volumes, cv_val_masks):
             get3DSegmentation(train_volumes, train_masks, val_volumes, val_masks, test_volumes, test_masks)
             
 """

@@ -10,22 +10,9 @@ from get_data import getData
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
 import numpy as np
-from scipy.ndimage import gaussian_filter
-import matplotlib.pyplot as plt
-from skimage.feature import local_binary_pattern, greycomatrix, greycoprops
-from skimage.filters.rank import entropy
-from skimage.morphology import disk
 from sklearn.decomposition import PCA
-from sklearn.decomposition import LatentDirichletAllocation as LDA
-from skimage.filters import gabor, gabor_kernel
-import cv2 as cv
-from sklearn import linear_model 
-from sklearn.neighbors import KNeighborsClassifier
-from skimage.measure import label, regionprops
 from int_features_3D import getIntensityFeatures
-from shape_features_3D import getShapeFeatures
 from texture_features_3D import getTextureFeatures
-from show_images import showImages
 """
 Run
 ===============================================================================
