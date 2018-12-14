@@ -23,7 +23,7 @@ def calcLBP(nodules, masks, n_points, radius):
     metrics_lbp = []
     for nodule, mask in zip(nodules, masks):
         sample_lbp = []
-        for slice_ in range(51):
+        for slice_ in range(len(nodule)):
             if np.sum(mask[slice_,:,:]) != 0:
                 kernel_ellipse = cv.getStructuringElement(cv.MORPH_ELLIPSE, (1,1))
                 erode_mask = cv.erode(mask[slice_,:,:],kernel_ellipse)
