@@ -50,7 +50,7 @@ def get3DSegmentation(train_volumes, train_masks, val_volumes, val_masks, test_v
         result_val.append(np.hstack(showResults(pred_lung, sample, "volume")))
     
     predictions_outer_lung, labels_outer_lung = outerLungPrediction(val_volumes, val_masks)
-    dice, jaccard, matrix = getPerformanceMetrics(np.hstack(result_val), np.hstack(labels_val_lung), predictions_outer_lung, labels_outer_lung)
+    dice, jaccard, matrix, accuracy  = getPerformanceMetrics(np.hstack(result_val), np.hstack(labels_val_lung), predictions_outer_lung, labels_outer_lung)
     print("3. SVM val \n=======")
     print("The dice value is %.2f and the jaccard value is %.2f" % (dice, jaccard))
 
@@ -65,7 +65,7 @@ def get3DSegmentation(train_volumes, train_masks, val_volumes, val_masks, test_v
         result_test.append(np.hstack(showResults(pred_lung, sample, "volume")))
 
     predictions_outer_lung, labels_outer_lung = outerLungPrediction(test_volumes, test_masks)
-    dice, jaccard, matrix = getPerformanceMetrics(np.hstack(result_test), np.hstack(labels_test_lung), predictions_outer_lung, labels_outer_lung)
+    dice, jaccard, matrix, accuracy  = getPerformanceMetrics(np.hstack(result_test), np.hstack(labels_test_lung), predictions_outer_lung, labels_outer_lung)
     print("The dice value is %.2f and the jaccard value is %.2f" % (dice, jaccard))
 
 
