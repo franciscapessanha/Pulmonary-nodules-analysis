@@ -26,9 +26,9 @@ def calcCircularFeatures(nodules, masks):
         minor_axis = props[0]['minor_axis_length']
         centroid = props[0]['centroid']
 
-        cv.circle(circle_0, (int(centroid[0]), int(centroid[1])),int(minor_axis*0.10),1, -1)
+        cv.circle(circle_0, (int(centroid[0]), int(centroid[1])),int(minor_axis*0.05),1, -1)
         cv.circle(circle_1, (int(centroid[0]), int(centroid[1])),int(minor_axis*0.30),1, -1)
-        cv.circle(circle_2, (int(centroid[0]), int(centroid[1])),int(minor_axis*0.60),1, -1)
+        cv.circle(circle_2, (int(centroid[0]), int(centroid[1])),int(minor_axis*0.55),1, -1)
 
         
         mean_0 = np.mean(nodule[circle_0 == 1])

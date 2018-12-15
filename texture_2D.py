@@ -7,7 +7,6 @@ from sklearn.metrics import accuracy_score
 import numpy as np
 from sklearn.decomposition import PCA
 from int_features_2D import getIntensityFeatures
-from shape_features_2D import getShapeFeatures
 from texture_features_2D import getTextureFeatures
 from show_images import showImages
 
@@ -139,10 +138,9 @@ def getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, t
     test_x = (test_x - mean_int)/std_int
     
     train_int, val_int, test_int, train_circ, val_circ, test_circ = getIntensityFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks)
-    train_shape, val_shape, test_shape = getShapeFeatures(train_masks,val_masks, test_masks)
     train_gabor, val_gabor, test_gabor,train_lbp, val_lbp, test_lbp = getTextureFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks)
     
-    
+    """
     print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
     print("\nIntensity Features only \n=======================")
     prediction_int = getPrediction(train_int ,train_y, val_int , val_y)
@@ -159,7 +157,7 @@ def getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, t
     print("\nGabor Features only \n=======================")
     prediction_gb = getPrediction(train_gabor, train_y, val_gabor, val_y)
     #texture_metrics(prediction_gb, val_y)
-    
+    """ 
     print("\nAll Features\n=======================")
     train_features = np.concatenate((train_int, train_circ,train_lbp, train_gabor), axis=1)
     val_features = np.concatenate((val_int, val_circ, val_lbp, val_gabor), axis=1)
@@ -196,8 +194,10 @@ def getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, t
         print("GT = %.0f" % val_y[i])
     
     """
+    
     print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
     print("TEST SET")
+    
     print("\nIntensity Features only \n=======================")
     #prediction_int = getPrediction(train_int ,train_y, test_int , test_y)
     #textureMetrics(prediction_int, test_y)
@@ -213,7 +213,7 @@ def getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, t
     print("\nGabor Features only \n=======================")
     prediction_gb = getPrediction(train_gabor, train_y, test_gabor, test_y)
     #textureMetrics(prediction_gb, test_y)
-        
+      
     print("\nAll Features\n=======================")
     train_features = np.concatenate((train_int, train_circ,train_lbp, train_gabor), axis=1)
     test_features = np.concatenate((test_int, test_circ, test_lbp, test_gabor), axis=1)
@@ -235,5 +235,6 @@ def getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, t
        
     prediction_all_pca = getPrediction(np.concatenate((train_int_pca, train_text_pca), axis = 1), train_y,np.concatenate((test_int_pca, test_text_pca), axis = 1), test_y)
     textureMetrics(prediction_all_pca, test_y)
+    
 
-run("cross_val")
+run()
