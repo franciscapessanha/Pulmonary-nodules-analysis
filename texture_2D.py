@@ -5,11 +5,10 @@ from get_data import getData
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
 import numpy as np
-from sklearn.decomposition import PCA
 from int_features_2D import getIntensityFeatures
-from shape_features_2D import getShapeFeatures
 from texture_features_2D import getTextureFeatures
 from show_images import showImages
+from sklearn.neighbors import KNeighborsClassifier
 
 """
 Run
@@ -44,15 +43,20 @@ def normalizeData(train_slices, train_slices_masks):
 Get Prediction
 ===============================================================================
 """
-def getPrediction(train_features, train_y, features, labels):
+def getPredictionSVM(train_features, train_y, features, labels):
     modelSVM = SVC(kernel = 'linear', gamma = 'auto', decision_function_shape= 'ovo',class_weight='balanced')
     modelSVM.fit(train_features, train_y)
     predictSVM = modelSVM.predict(features)
 
-    accuracy = accuracy_score(labels, predictSVM)
-    print("Accuracy SVM = %.3f" % accuracy)
-
     return predictSVM
+
+def getPredictionKNN(train_features, train_y, features, labels):
+    modelKNN = KNeighborsClassifier(n_neighbors=11)
+    modelKNN.fit(train_features, train_y)
+    predictKNN = modelKNN.predict(features)
+
+    return predictKNN
+
 
 def confusionMatrix(predictions, labels):
     true_positives = 0
@@ -112,7 +116,7 @@ def separateClasses(predictSVM):
             
     return solid, sub_solid, non_solid
 
-def textureMetrics (prediction, val_y):
+def textureMetrics(prediction, val_y):
     solid_pred, sub_solid_pred, non_solid_pred = separateClasses(prediction)
     solid_label, sub_solid_label, non_solid_label = separateClasses(val_y)
     
@@ -139,101 +143,102 @@ def getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, t
     test_x = (test_x - mean_int)/std_int
     
     train_int, val_int, test_int, train_circ, val_circ, test_circ = getIntensityFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks)
-    train_shape, val_shape, test_shape = getShapeFeatures(train_masks,val_masks, test_masks)
     train_gabor, val_gabor, test_gabor,train_lbp, val_lbp, test_lbp = getTextureFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks)
+   
+    """
     
+    print("------------------------------------------- VALIDATION SET -------------------------------------------")
     
-    print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
     print("\nIntensity Features only \n=======================")
-    prediction_int = getPrediction(train_int ,train_y, val_int , val_y)
-    #texture_metrics(prediction_int, val_y)
+    prediction_int = getPredictionSVM(train_int ,train_y, val_int , val_y)
+    #textureMetrics(prediction_int, val_y)
     
     print("\nCircular Features only \n=======================")
-    prediction_circ = getPrediction(train_circ, train_y, val_circ, val_y)
-    #texture_metrics(prediction_circ, val_y)
+    prediction_circ = getPredictionSVM(train_circ, train_y, val_circ, val_y)
+    #textureMetrics(prediction_circ, val_y)
     
     print("\nLBP Features only \n=======================")
-    prediction_lbp = getPrediction(train_lbp, train_y, val_lbp, val_y)
-    #texture_metrics(prediction_lbp, val_y)
+    prediction_lbp = getPredictionSVM(train_lbp, train_y, val_lbp, val_y)
+    #textureMetrics(prediction_lbp, val_y)
     
     print("\nGabor Features only \n=======================")
-    prediction_gb = getPrediction(train_gabor, train_y, val_gabor, val_y)
-    #texture_metrics(prediction_gb, val_y)
+    prediction_gb = getPredictionSVM(train_gabor, train_y, val_gabor, val_y)
+    #textureMetrics(prediction_gb, val_y)
     
     print("\nAll Features\n=======================")
     train_features = np.concatenate((train_int, train_circ,train_lbp, train_gabor), axis=1)
     val_features = np.concatenate((val_int, val_circ, val_lbp, val_gabor), axis=1)
     test_features = np.concatenate((test_int, test_circ, test_lbp, test_gabor), axis=1)
-    prediction_all = getPrediction(train_features, train_y, val_features, val_y)
-    #texture_metrics(prediction_all, val_y)
-    
-    print("\n(PCA) All Features\n=======================")
-    pca = PCA(n_components = 8)
-    train_int_pca = np.concatenate((train_int, train_circ), axis = 1)
-    val_int_pca = np.concatenate((val_int, val_circ), axis = 1)
-    pca.fit_transform(train_int_pca)
-    pca.fit_transform(val_int_pca)
-    
-    pca = PCA(n_components = 8)
-    train_text_pca = np.concatenate((train_lbp, train_gabor), axis = 1)
-    val_text_pca = np.concatenate((val_lbp, val_gabor), axis = 1)
-    pca.fit_transform(train_text_pca)
-    pca.fit_transform(val_text_pca)
-   
-    prediction_all_pca = getPrediction(np.concatenate((train_int_pca, train_text_pca), axis = 1), train_y,np.concatenate((val_int_pca, val_text_pca), axis = 1), val_y)
-    texture_metrics(prediction_all_pca, val_y)
- 
+    prediction_all = getPredictionSVM(train_features, train_y, val_features, val_y)
+    #textureMetrics(prediction_all, val_y)
+    """
     """
     for i in range(len(val_x)):
         showImages([val_x[i]], [val_masks[i]], nodules_and_mask = True, overlay = False)
         
         print("Intensity = %.0f" % prediction_int[i])
         print("Circular = %.0f" % prediction_circ[i])
-        #print("Shape = %.0f" % prediction_shape[i])
         print("LBP = %.0f" % prediction_lbp[i])
+        print("Gabor = %.0f" % prediction_gb[i])
         print("All = %.0f" % prediction_all[i])
-        print("All (PCA) = %.0f" % prediction_all_pca[i])
         print("GT = %.0f" % val_y[i])
-    
     """
-    print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
-    print("TEST SET")
+
+    print("------------------------------------------- TEST SET -------------------------------------------")
+    
     print("\nIntensity Features only \n=======================")
-    #prediction_int = getPrediction(train_int ,train_y, test_int , test_y)
-    #textureMetrics(prediction_int, test_y)
+    prediction_int = getPredictionSVM(train_int ,train_y, test_int , test_y)
+    prediction_KNN_int = getPredictionKNN(train_int ,train_y, test_int , test_y)
+    print("\nSVM\n=======================")
+    textureMetrics(prediction_int, test_y)
+    print("\nkNN\n=======================")
+    textureMetrics(prediction_KNN_int, test_y)
         
     print("\nCircular Features only \n=======================")
-    prediction_circ = getPrediction(train_circ, train_y, test_circ, test_y)
-    #textureMetrics(prediction_circ, test_y)
+    prediction_circ = getPredictionSVM(train_circ, train_y, test_circ, test_y)
+    prediction_KNN_circ = getPredictionKNN(train_circ ,train_y, test_circ, test_y)
+    print("\nSVM\n=======================")
+    textureMetrics(prediction_circ, test_y)
+    print("\nkNN\n=======================")
+    textureMetrics(prediction_KNN_circ, test_y)
     
     print("\nLBP Features only \n=======================")
-    prediction_lbp = getPrediction(train_lbp, train_y, test_lbp, test_y)
-    #textureMetrics(prediction_lbp, test_y)
+    prediction_lbp = getPredictionSVM(train_lbp, train_y, test_lbp, test_y)
+    prediction_KNN_lbp = getPredictionKNN(train_lbp ,train_y, test_lbp, test_y)
+    print("\nSVM\n=======================")
+    textureMetrics(prediction_lbp, test_y)
+    print("\nkNN\n=======================")
+    textureMetrics(prediction_KNN_lbp, test_y)
         
     print("\nGabor Features only \n=======================")
-    prediction_gb = getPrediction(train_gabor, train_y, test_gabor, test_y)
-    #textureMetrics(prediction_gb, test_y)
-        
+    prediction_gb = getPredictionSVM(train_gabor, train_y, test_gabor, test_y)
+    prediction_KNN_gb = getPredictionKNN(train_gabor ,train_y, test_gabor, test_y)
+    print("\nSVM\n=======================")
+    textureMetrics(prediction_gb, test_y)
+    print("\nkNN\n=======================")
+    textureMetrics(prediction_KNN_gb, test_y)
+      
     print("\nAll Features\n=======================")
     train_features = np.concatenate((train_int, train_circ,train_lbp, train_gabor), axis=1)
     test_features = np.concatenate((test_int, test_circ, test_lbp, test_gabor), axis=1)
-    prediction_all = getPrediction(train_features, train_y, test_features, test_y)
+    prediction_all = getPredictionSVM(train_features, train_y, test_features, test_y)
+    prediction_KNN_all = getPredictionKNN(train_features, train_y, test_features, test_y)
+    print("\nSVM\n=======================")
     textureMetrics(prediction_all, test_y)
-        
-    print("\n(PCA) All Features\n=======================")
-    pca = PCA(n_components = 4)
-    train_int_pca = np.concatenate((train_int, train_circ), axis = 1)
-    test_int_pca = np.concatenate((test_int, test_circ), axis = 1)
-    pca.fit_transform(train_int_pca)
-    pca.fit_transform(test_int_pca)
-        
-    pca = PCA(n_components = 4)
-    train_text_pca = np.concatenate((train_lbp, train_gabor), axis = 1)
-    test_text_pca = np.concatenate((test_lbp, test_gabor), axis = 1)
-    pca.fit_transform(train_text_pca)
-    pca.fit_transform(test_text_pca)
-       
-    prediction_all_pca = getPrediction(np.concatenate((train_int_pca, train_text_pca), axis = 1), train_y,np.concatenate((test_int_pca, test_text_pca), axis = 1), test_y)
-    textureMetrics(prediction_all_pca, test_y)
+    print("\nkNN\n=======================")
+    textureMetrics(prediction_KNN_all, test_y)
 
-run("cross_val")
+    """
+    for i in range(len(test_x)):
+        showImages([test_x[i]], [test_masks[i]], nodules_and_mask = True, overlay = False)
+        
+        print("Intensity = %.0f" % prediction_int[i])
+        print("Circular = %.0f" % prediction_circ[i])
+        print("LBP = %.0f" % prediction_lbp[i])
+        print("Gabor = %.0f" % prediction_gb[i])
+        print("All = %.0f" % prediction_all[i])
+        print("GT = %.0f" % val_y[i])
+    
+    """
+
+run()

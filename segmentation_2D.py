@@ -7,6 +7,7 @@ from hessian_2D import getEigNodules, gaussianSmooth, getSI, getCV, getVmed
 from sklearn.svm import SVC
 from skimage.measure import label, regionprops
 import cv2 as cv
+from sklearn.neighbors import KNeighborsClassifier
 
 """
 Run
@@ -34,8 +35,13 @@ def get2DSegmentation(train_x, train_masks, val_x, val_masks, test_x, test_masks
     
     val_lung, labels_val_lung  = getInputSet(val_x, val_masks, mean_int, std_int)
 
+    #SVM
     model_SVM = SVC(kernel = 'rbf', random_state = 1,gamma='auto')
     model_SVM.fit(points,labels)
+    
+    #kNn
+    model_kNN = KNeighborsClassifier(n_neighbors=7)
+    model_kNN.fit(points,labels)
     
     pred_val_lung = []
     result_val = []
@@ -44,9 +50,9 @@ def get2DSegmentation(train_x, train_masks, val_x, val_masks, test_x, test_masks
         pred_val_lung.append(pred_lung) 
         result_val.append(np.hstack(showResults(pred_lung, sample, mask)))
     
-    predictions_outer_lung, labels_outer_lung = outerLungPrediction(val_x, val_masks)
-    dice, jaccard, matrix, accuracy = getPerformanceMetrics(np.hstack(result_val), np.hstack(labels_val_lung), predictions_outer_lung, labels_outer_lung)
-    print("The dice value is %.2f and the jaccard value is %.2f. The accucaracy is %.2f" % (dice, jaccard, accuracy))
+    #predictions_outer_lung, labels_outer_lung = outerLungPrediction(val_x, val_masks)
+    #dice, jaccard, matrix, accuracy = getPerformanceMetrics(np.hstack(result_val), np.hstack(labels_val_lung), predictions_outer_lung, labels_outer_lung)
+    #print("The dice value is %.2f and the jaccard value is %.2f. The accucaracy is %.2f" % (dice, jaccard, accuracy))
 
     print("SVM test \n=======")
     test_lung, labels_test_lung  = getInputSet(test_x, test_masks, mean_int, std_int)
@@ -62,6 +68,19 @@ def get2DSegmentation(train_x, train_masks, val_x, val_masks, test_x, test_masks
     dice, jaccard, matrix, accuracy = getPerformanceMetrics(np.hstack(result_test), np.hstack(labels_test_lung), predictions_outer_lung, labels_outer_lung)
     print("The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice, jaccard, accuracy))
 
+    print("kNN test \n=======")
+    
+    pred_test_lung_knn = []
+    result_test_knn = []
+    for x, sample, mask in zip(test_lung, test_x, test_masks):
+        pred_lung_knn = model_kNN.predict(np.transpose(np.vstack(x)))
+        pred_test_lung_knn.append(pred_lung_knn) 
+        result_test_knn.append(np.hstack(showResults(pred_lung_knn, sample, mask)))
+
+    predictions_outer_lung, labels_outer_lung = outerLungPrediction(test_x, test_masks)
+    dice, jaccard, matrix, accuracy = getPerformanceMetrics(np.hstack(result_test_knn), np.hstack(labels_test_lung), predictions_outer_lung, labels_outer_lung)
+    print("The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice, jaccard, accuracy))
+    
 """
 Show results
 ===============================================================================
@@ -102,7 +121,6 @@ def showResults(prediction_lung, sample, mask):
     ax[1].imshow(mask,**plot_args) #plots the mask
     ax[2].imshow(result,**plot_args) #plots the image
     plt.show()
-    
     
     #Resulta pior
     result = cv.medianBlur(result,3)

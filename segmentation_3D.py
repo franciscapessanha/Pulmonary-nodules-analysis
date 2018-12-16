@@ -12,6 +12,7 @@ from matplotlib import pyplot as plt
 from hessian_3D import getEigNodules, gaussianSmooth, getSI, getCV, getVmed
 from sklearn.svm import SVC
 from skimage.measure import label, regionprops
+from sklearn.neighbors import KNeighborsClassifier
 """
 Run
 ===============================================================================
@@ -39,8 +40,13 @@ def get3DSegmentation(train_volumes, train_masks, val_volumes, val_masks, test_v
     print("2. Get Input set")
     val_lung, labels_val_lung  = getInputSet(val_volumes, val_masks, mean_int, std_int)
 
+    #SVM
     model_SVM = SVC(kernel = 'rbf', random_state = 1,gamma='auto')
     model_SVM.fit(points,labels)
+    
+    #kNn
+    model_kNN = KNeighborsClassifier(n_neighbors=7)
+    model_kNN.fit(points,labels)
     
     pred_val_lung = []
     result_val = []
@@ -68,6 +74,17 @@ def get3DSegmentation(train_volumes, train_masks, val_volumes, val_masks, test_v
     dice, jaccard, matrix, accuracy  = getPerformanceMetrics(np.hstack(result_test), np.hstack(labels_test_lung), predictions_outer_lung, labels_outer_lung)
     print("The dice value is %.2f and the jaccard value is %.2f" % (dice, jaccard))
 
+    print("5. kNN test \n=======")
+    pred_test_lung_knn = []
+    result_test_knn = []
+    for x, sample, mask in zip(test_lung, test_volumes):
+        pred_lung_knn = model_kNN.predict(np.transpose(np.vstack(x)))
+        pred_test_lung_knn.append(pred_lung_knn) 
+        result_test_knn.append(np.hstack(showResults(pred_lung_knn, sample, "volume")))
+
+    predictions_outer_lung, labels_outer_lung = outerLungPrediction(test_volumes, test_masks)
+    dice, jaccard, matrix, accuracy = getPerformanceMetrics(np.hstack(result_test_knn), np.hstack(labels_test_lung), predictions_outer_lung, labels_outer_lung)
+    print("The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice, jaccard))
 
 """
 Process results 
