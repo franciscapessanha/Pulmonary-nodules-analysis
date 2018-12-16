@@ -232,9 +232,9 @@ def getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, t
     gb_kNN_metrics = textureMetrics(prediction_kNN_gb, val_y)
     
     print("\nAll Features\n=======================")
-    train_features = np.concatenate((train_int, train_circ,train_lbp, train_gabor), axis=1)
-    val_features = np.concatenate((val_int, val_circ, val_lbp, val_gabor), axis=1)
-    test_features = np.concatenate((test_int, test_circ, test_lbp, test_gabor), axis=1)
+    train_features = np.concatenate((train_int, train_circ,train_gabor), axis=1)
+    val_features = np.concatenate((val_int, val_circ, val_gabor), axis=1)
+    test_features = np.concatenate((test_int, test_circ, test_gabor), axis=1)
     prediction_all = getPredictionSVM(train_features, train_y, val_features, val_y)
     prediction_kNN_all = getPredictionKNN(train_features ,train_y, test_features , test_y)
     all_metrics = textureMetrics(prediction_all, val_y)
@@ -252,7 +252,7 @@ def getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, t
         print("GT = %.0f" % val_y[i])
     """
 
-    
+    """
     print("------------------------------------------- TEST SET -------------------------------------------")
     
     print("\nIntensity Features only \n=======================")
@@ -297,7 +297,7 @@ def getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, t
     print("\nkNN\n=======================")
     all_kNN_metrics = textureMetrics(prediction_kNN_all, test_y)
 
-
+    """
     return int_metrics, circ_metrics, lbp_metrics, gb_metrics, all_metrics, int_kNN_metrics, circ_kNN_metrics, lbp_kNN_metrics, gb_kNN_metrics, all_kNN_metrics
 
-run()
+run("cross_val")

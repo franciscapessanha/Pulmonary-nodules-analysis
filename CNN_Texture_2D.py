@@ -59,7 +59,7 @@ def run(mode = "default"):
         
             show_loss_accuracy(fashion_train)
             solid_pred, sub_solid_pred, non_solid_pred = separateClasses(predicted_classes)
-            solid_label, sub_solid_label, non_solid_label = separateClasses(val_y)
+            solid_label, sub_solid_label, non_solid_label = separateClasses(test_y)
             
             dice_s, jaccard_s, accuracy_s = getPerformanceMetrics(solid_pred, solid_label)
             dice_ss, jaccard_ss, accuracy_ss = getPerformanceMetrics(sub_solid_pred, sub_solid_label)

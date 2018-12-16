@@ -35,34 +35,34 @@ def run(mode = "default"):
         gb_kNN_metrics = []
         all_kNN_metrics = []
         
-        cv_train_x, cv_train_masks, train_y , cv_val_x, cv_val_masks, val_y, test_x, test_masks, test_y = getData("cross_val")
-        for train_x, train_masks, val_x, val_masks in zip(cv_train_x, cv_train_masks, cv_val_x, cv_val_masks):
+        cv_train_x, cv_train_masks, cv_train_y , cv_val_x, cv_val_masks, cv_val_y, test_x, test_masks, test_y = getData(mode = "cross_val", type_ = "volume")
+        for train_x, train_masks, train_y, val_x, val_masks, val_y in zip(cv_train_x, cv_train_masks,cv_train_y, cv_val_x, cv_val_masks, cv_val_y):
             int_metrics, circ_metrics, lbp_metrics, gb_metrics, all_metrics, int_kNN_metrics, circ_kNN_metrics, lbp_kNN_metrics, gb_kNN_metrics, all_kNN_metrics = getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, test_masks, test_y)
-       
-        
-        print("SVM\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
-        print("\nIntensity Features only \n=======================")
-        performaceCrossVal(int_metrics)
-        print("\nCircular Features\n=======================")
-        performaceCrossVal(circ_metrics)
-        print("\nLBP Features only \n=======================")
-        performaceCrossVal(lbp_metrics)
-        print("\nGabor Features only \n=======================")
-        performaceCrossVal(gb_metrics)
-        print("\nAll Features\n=======================")
-        performaceCrossVal(all_metrics)
-        
-        print("kNN\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
-        print("\nIntensity Features only \n=======================")
-        performaceCrossVal(int_kNN_metrics)
-        print("\nCircular Features\n=======================")
-        performaceCrossVal(circ_kNN_metrics)
-        print("\nLBP Features only \n=======================")
-        performaceCrossVal(lbp_kNN_metrics)
-        print("\nGabor Features only \n=======================")
-        performaceCrossVal(gb_kNN_metrics)
-        print("\nAll Features\n=======================")
-        performaceCrossVal(all_kNN_metrics)
+           
+            
+            print("SVM\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+            print("\nIntensity Features only \n=======================")
+            performaceCrossVal(int_metrics)
+            print("\nCircular Features\n=======================")
+            performaceCrossVal(circ_metrics)
+            print("\nLBP Features only \n=======================")
+            performaceCrossVal(lbp_metrics)
+            print("\nGabor Features only \n=======================")
+            performaceCrossVal(gb_metrics)
+            print("\nAll Features\n=======================")
+            performaceCrossVal(all_metrics)
+            
+            print("kNN\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+            print("\nIntensity Features only \n=======================")
+            performaceCrossVal(int_kNN_metrics)
+            print("\nCircular Features\n=======================")
+            performaceCrossVal(circ_kNN_metrics)
+            print("\nLBP Features only \n=======================")
+            performaceCrossVal(lbp_kNN_metrics)
+            print("\nGabor Features only \n=======================")
+            performaceCrossVal(gb_kNN_metrics)
+            print("\nAll Features\n=======================")
+            performaceCrossVal(all_kNN_metrics)
 
 """
 Measure cross-validation performance
@@ -189,6 +189,7 @@ Get Texture
 """
 
 def getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, test_masks, test_y):
+    
     mean_int, std_int = normalizeData(train_x, train_masks)
     train_x = (train_x - mean_int)/std_int
     val_x = (val_x - mean_int)/std_int
@@ -234,7 +235,7 @@ def getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, t
     
     prediction_all = getPredictionSVM(train_features, train_y, val_features, val_y)
     all_metrics = textureMetrics(prediction_all, val_y)
-   
+       
     """
     for i in range(len(test_x)):
         showImages([test_x[i]], [test_masks[i]], nodules_and_mask = True, overlay = False)
@@ -247,7 +248,6 @@ def getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, t
         print("GT = %.0f" % val_y[i])
     
     """ 
-
     
     """
     print("------------------------------------------- TEST SET -------------------------------------------")
@@ -294,8 +294,8 @@ def getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, t
     print("\nkNN\n=======================")
     all_kNN_metrics = predctictiontextureMetrics(prediction_kNN_all, test_y)
     """
-
-
+    
+    
     return int_metrics, circ_metrics, lbp_metrics, gb_metrics, all_metrics, int_kNN_metrics, circ_kNN_metrics, lbp_kNN_metrics, gb_kNN_metrics, all_kNN_metrics
-
-run()
+    
+run("cross_val")
