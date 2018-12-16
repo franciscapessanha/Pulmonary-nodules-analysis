@@ -105,7 +105,7 @@ train_model
 ===============
 train a CNN model and fits the train set on it. It tests the validation set and predicts for test set
 
-Arguments: train_slices, test_slices, val_slices, train_Y_one_hot, test_Y_one_hot, val_Y_one_hot - images as classes of all 3 sets
+Arguments: train_slices, test_slices, val_slices, train_Y_one_hot, test_Y_one_hot, val_Y_one_hot - images and classes of all 3 sets
         
 Returns:
     * predicted_classes - vector with the classes predicted for the test set
@@ -188,7 +188,7 @@ def show_loss_accuracy(fashion_train):
     
 #%%
     """
-Evaliuation
+Evaluation
 ===============================================================================
 """
 
