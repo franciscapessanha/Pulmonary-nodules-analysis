@@ -17,7 +17,7 @@ import keras
 """
 main function for CNN_texture_2D
 """
-def run_CNN_segmentation_2D(mode = "default"):
+def run(mode = "default"):
     if mode == "default": 
         train_slices, train_slices_masks, y_train, val_slices, val_slices_masks, y_val, test_slices, test_slices_masks, y_test = getData(mode = "default")
         train_slices, test_slices, val_slices, train_Y_one_hot, test_Y_one_hot, val_Y_one_hot=prepare_CNN(train_slices, train_slices_masks, y_train, test_slices, test_slices_masks, y_test , val_slices, val_slices_masks, y_val)
@@ -38,6 +38,20 @@ def run_CNN_segmentation_2D(mode = "default"):
     
     elif mode == "cross_val":
         train_slices, train_slices_masks, y_train , val_slices, val_slices_masks, y_val, test_slices, test_slices_masks, y_test = getData(mode = "cross_val")
+        
+        dice_solid = []
+        jaccard_solid = []
+        accuracy_solid = []
+        
+        dice_sub_solid = []
+        jaccard_sub_solid = []
+        accuracy_sub_solid = []
+        
+        dice_non_solid = []
+        jaccard_non_solid = []
+        accuracy_non_solid = []
+        
+        
         for train_x, train_masks, train_y, val_x, val_masks, val_y  in zip(train_slices, train_slices_masks, y_train , val_slices, val_slices_masks, y_val):
             
             train_slices, test_slices, val_slices, train_Y_one_hot, test_Y_one_hot, val_Y_one_hot=prepare_CNN(train_x, train_masks, train_y, test_slices, test_slices_masks, y_test, val_x, val_masks, val_y)
@@ -47,14 +61,43 @@ def run_CNN_segmentation_2D(mode = "default"):
             solid_pred, sub_solid_pred, non_solid_pred = separateClasses(predicted_classes)
             solid_label, sub_solid_label, non_solid_label = separateClasses(val_y)
             
-            dice_solid, jaccard_solid, _, accuracy_solid = getPerformanceMetrics(solid_pred, solid_label)
-            dice_sub_solid, jaccard_sub_solid, _, accuracy_sub_solid = getPerformanceMetrics(sub_solid_pred, sub_solid_label)
-            dice_non_solid, jaccard_non_solid, _, accuracy_non_solid = getPerformanceMetrics(non_solid_pred, non_solid_label)
-            print("Solid texture: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice_solid, jaccard_solid, accuracy_solid))
-            print("Sub solid texture: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice_sub_solid, jaccard_sub_solid, accuracy_sub_solid))
-            print("Non solid texture: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice_non_solid, jaccard_non_solid, accuracy_non_solid))
-   
+            dice_s, jaccard_s, accuracy_s = getPerformanceMetrics(solid_pred, solid_label)
+            dice_ss, jaccard_ss, accuracy_ss = getPerformanceMetrics(sub_solid_pred, sub_solid_label)
+            dice_ns, jaccard_ns, accuracy_ns = getPerformanceMetrics(non_solid_pred, non_solid_label)
+            
+            dice_solid.append(dice_s)
+            jaccard_solid.append(jaccard_solid)
+            accuracy_solid.append(accuracy_solid)
+        
+            dice_sub_solid.append(dice_ss)
+            jaccard_sub_solid.append(jaccard_ss)
+            accuracy_sub_solid.append(accuracy_ss)
+            
+            dice_non_solid.append(dice_ns)
+            jaccard_non_solid.append(jaccard_ns)
+            accuracy_non_solid.appned(accuracy_ns)
+            
+        performaceCrossVal(dice_solid, jaccard_solid, accuracy_solid, "Solid")      
+        performaceCrossVal(dice_sub_solid, jaccard_sub_solid, accuracy_sub_solid, "Sub solid") 
+        performaceCrossVal(dice_non_solid, jaccard_non_solid, accuracy_non_solid, "Non solid") 
 
+"""
+Measure cross-validation performance
+===============================================================================
+"""   
+def performaceCrossVal(dice, jaccard, accuracy, string):
+    mean_dice = np.mean(dice)
+    std_dice = np.std(dice)
+    
+    mean_jaccard = np.mean(jaccard)
+    std_jaccard = np.std(jaccard)
+    
+    mean_accuracy = np.mean(accuracy)
+    std_accuracy = np.std(accuracy)
+    
+    print(string, " texture: The dice value is %.2f ± %.2f and the jaccard value is %.2f ± %.2f. The accuracy is %.2f ± %.2f" % 
+          (mean_dice, std_dice,mean_jaccard, std_jaccard,mean_accuracy,std_accuracy))          
+        
 #%%
 """
 prepare CNN
@@ -223,9 +266,8 @@ def getPerformanceMetrics(predictions_outer_lung, labels_outer_lung):
     
     dice = (2*true_positives/(false_positives+false_negatives+(2*true_positives)))
     jaccard = (true_positives)/(true_positives+false_positives+false_negatives)
-    matrix = np.asarray([[true_positives, false_negatives], [false_positives, true_negatives]])
     
-    return dice, jaccard, matrix, accuracy 
+    return dice, jaccard, accuracy 
 
 def separateClasses(predict):
     solid =[] # label 2
@@ -251,6 +293,6 @@ def separateClasses(predict):
 
 #%%
 
-run_CNN_segmentation_2D(mode = "cross_val")
+run(mode = "cross_val")
 
 

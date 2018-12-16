@@ -20,7 +20,7 @@ Run
 def run(mode = "default"):
     if mode == "default": 
         train_volumes, train_masks,y_train, val_volumes, val_masks,y_val, test_volumes, test_masks, y_test = getData(mode = "default", type_ = "volume")
-        int_metrics, circ_metrics, lbp_metrics, gb_metrics, all_metrics, int_kNN_metrics, circ_kNN_metrics, lbp_kNN_metrics, gb_kNN_metrics, all_kNN_metrics = getTexture(train_volumes[20:25], train_masks,y_train[20:25], val_volumes[1:10], val_masks,y_val[1:10], test_volumes[1:10], test_masks[1:10], y_test[1:10])
+        int_metrics, circ_metrics, lbp_metrics, gb_metrics, all_metrics, int_kNN_metrics, circ_kNN_metrics, lbp_kNN_metrics, gb_kNN_metrics, all_kNN_metrics = getTexture(train_volumes[20:32], train_masks,y_train[20:32], val_volumes[1:10], val_masks,y_val[1:10], test_volumes[1:10], test_masks[1:10], y_test[1:10])
         
     elif mode == "cross_val":
         int_metrics = []
