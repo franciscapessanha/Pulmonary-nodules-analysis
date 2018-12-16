@@ -30,9 +30,9 @@ def calcCircularFeatures(nodules, masks):
         centroid = props[0]['centroid']
         centroid = (int(centroid[0]), int(centroid[1]),center_slice)
         
-        dist_0 = int(minor_axis * 0.10)
+        dist_0 = int(minor_axis * 0.05)
         dist_1 = int(minor_axis * 0.30)
-        dist_2 = int(minor_axis * 0.60)
+        dist_2 = int(minor_axis * 0.55)
        
         sphere_0 = np.zeros(np.shape(nodule), np.uint8)
         sphere_1 = np.zeros(np.shape(nodule), np.uint8)

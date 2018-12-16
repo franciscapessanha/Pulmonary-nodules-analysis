@@ -24,8 +24,7 @@ def calcLBP(nodules, masks, n_points, radius):
     for nodule, mask in zip(nodules, masks):
         kernel_ellipse = cv.getStructuringElement(cv.MORPH_ELLIPSE, (1,1))
         erode_mask = cv.erode(mask,kernel_ellipse)
-        lbp = local_binary_pattern(nodule, n_points, radius, 'var') #'ror' for rotation invariant    
-        
+        lbp = local_binary_pattern(nodule, n_points, radius, 'uniform')
         all_lbp.append(lbp[erode_mask == 1])
         metrics_lbp.append([np.mean(lbp[erode_mask == 1]), np.std(lbp[erode_mask == 1])])
     return all_lbp, metrics_lbp

@@ -38,7 +38,6 @@ def run_CNN_segmentation_2D(mode = "default"):
     
     elif mode == "cross_val":
         train_slices, train_slices_masks, y_train , val_slices, val_slices_masks, y_val, test_slices, test_slices_masks, y_test = getData(mode = "cross_val")
-        
         for train_x, train_masks, train_y, val_x, val_masks, val_y  in zip(train_slices, train_slices_masks, y_train , val_slices, val_slices_masks, y_val):
             
             train_slices, test_slices, val_slices, train_Y_one_hot, test_Y_one_hot, val_Y_one_hot=prepare_CNN(train_x, train_masks, train_y, test_slices, test_slices_masks, y_test, val_x, val_masks, val_y)
@@ -46,7 +45,7 @@ def run_CNN_segmentation_2D(mode = "default"):
         
             show_loss_accuracy(fashion_train)
             solid_pred, sub_solid_pred, non_solid_pred = separateClasses(predicted_classes)
-            solid_label, sub_solid_label, non_solid_label = separateClasses(y_test)
+            solid_label, sub_solid_label, non_solid_label = separateClasses(val_y)
             
             dice_solid, jaccard_solid, _, accuracy_solid = getPerformanceMetrics(solid_pred, solid_label)
             dice_sub_solid, jaccard_sub_solid, _, accuracy_sub_solid = getPerformanceMetrics(sub_solid_pred, sub_solid_label)

@@ -61,7 +61,7 @@ def train_model():
         
         preds_val_nodules=preds_val_nodules.reshape(-1,64,64)
         val_slices_masks=val_slices_masks.reshape(-1,64,64)
-        _, dice, jaccard = confusionMatrix(np.hstack(np.hstack(preds_val_nodules)), np.hstack(np.hstack(val_slices_masks)))
+        accuracy, dice, jaccard = confusionMatrix(np.hstack(np.hstack(preds_val_nodules)), np.hstack(np.hstack(val_slices_masks)))
         
         metrics=dice+jaccard  # the best result will dictate which is the bst treshold
         
@@ -113,7 +113,7 @@ def prepare_CNN():
     plt.show()
     
     
-    #Aplly lung mask
+    #Apply lung mask
     for i in range(len(train_slices)):
         chull=getLungMask(train_slices[i])
         train_slices[i][chull == 0] = 0

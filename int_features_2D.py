@@ -49,7 +49,9 @@ def calcIntensityFeatures(nodules, masks):
     for nodule, mask in zip(nodules, masks):
         mean = np.mean(nodule[mask == 1])
         std = np.std(nodule[mask == 1])
-        intensity_features.append([mean, std])  
+        max_ = np.max(nodule[mask == 1])
+        min_ = np.min(nodule[mask == 1])
+        intensity_features.append([mean, std, max_, min_])  
     
     return intensity_features
     
