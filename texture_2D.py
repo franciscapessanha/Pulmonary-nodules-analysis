@@ -18,8 +18,8 @@ Run
 def run(mode = "default"):
     if mode == "default": 
         train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, test_masks, test_y = getData()
-        _, _, _, _, _, _, _, _, _,_ = getTexture(train_x, train_masks, train_y, val_x, val_masks)
-        _, _, _, _, _, _, _, _, _,_  = getTexture(train_x, train_masks, train_y, test_x, test_masks)
+        _, _, _, _, _, _, _, _, _,_ = getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y)
+        _, _, _, _, _, _, _, _, _,_  = getTexture(train_x, train_masks, train_y, test_x, test_masks, test_y)
         
     elif mode == "cross_val":
         int_metrics = []
@@ -295,4 +295,4 @@ def getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y):
 
     return int_metrics, circ_metrics, lbp_metrics, gb_metrics, all_metrics, int_kNN_metrics, circ_kNN_metrics, lbp_kNN_metrics, gb_kNN_metrics, all_kNN_metrics
 
-run("cross_val")
+run("default")

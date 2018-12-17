@@ -8,10 +8,9 @@ Texture Features
 """
 
 def getTextureFeatures(train_x, train_masks, val_x, val_masks,):
-    train_gabor, val_gabor = getGaborFilter(train_x, train_masks, val_x, val_masks)
+    train_gabor, val_gabor= getGaborFilter(train_x, train_masks, val_x, val_masks)
     train_lbp, val_lbp = getLBPFeatures(train_x, train_masks, val_x, val_masks, 1*3,8*3)
     
-    #return train_gabor, val_gabor, test_gabor,train_lbp, val_lbp, test_lbp
     return train_gabor, val_gabor,train_lbp, val_lbp
 """
 LBP Features
@@ -67,7 +66,6 @@ def calculateGaborFilters(nodules, masks):
 
 def reshapeGabor(filtered_ims, nodules):
     gabor_results=[]
-    
     for j in range(0,len(nodules)):
         each_img_nodule = filtered_ims[36*j:36*j+36]
         nodule_metrics = []
@@ -87,4 +85,4 @@ def getGaborFilter(train_x, train_masks, val_x, val_masks):
     val_gabor_features = reshapeGabor(filtered_ims_val, val_x)
 
     
-    return train_gabor_features, val_gabor_features
+    return train_gabor_features, val_gabor_features, filtered_ims_train
