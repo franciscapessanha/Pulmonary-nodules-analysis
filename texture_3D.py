@@ -30,25 +30,45 @@ def run(mode = "default"):
         gb_metrics = []
         all_metrics = []
         
+        test_int_metrics = []
+        test_circ_metrics = []
+        test_lbp_metrics = []
+        test_gb_metrics = []
+        test_all_metrics = []
         
         cv_train_x, cv_train_masks, cv_train_y , cv_val_x, cv_val_masks, cv_val_y, test_x, test_masks, test_y = getData(mode = "cross_val", type_ = "volume")
         for train_x, train_masks, train_y, val_x, val_masks, val_y in zip(cv_train_x, cv_train_masks,cv_train_y, cv_val_x, cv_val_masks, cv_val_y):
             
-            int_metrics, circ_metrics, lbp_metrics, gb_metrics, all_metrics = getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, test_masks, test_y)
+           int_m, circ_m, lbp_m, gb_m, all_m, test_int_m, test_circ_m, test_lbp_m, test_gb_m, test_all_m = getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, test_masks, test_y)
+           
+           int_metrics.append(int_m)
+           circ_metrics.append(circ_m)
+           lbp_metrics.append(lbp_m)
+           gb_metrics.append(gb_m)
+           all_metrics.append(all_m)
+           
+           test_int_metrics.append(test_int_m)
+           test_circ_metrics.append(test_circ_m)
+           test_lbp_metrics.append(test_lbp_m)
+           test_gb_metrics.append(test_gb_m)
+           test_all_metrics.append(test_all_m)
             
-            
-            print("SVM\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
-            print("\nIntensity Features only \n=======================")
-            performaceCrossVal(int_metrics)
-            print("\nCircular Features\n=======================")
-            performaceCrossVal(circ_metrics)
-            print("\nLBP Features only \n=======================")
-            performaceCrossVal(lbp_metrics)
-            print("\nGabor Features only \n=======================")
-            performaceCrossVal(gb_metrics)
-            print("\nAll Features\n=======================")
-            performaceCrossVal(all_metrics)
-            
+        print("---------------VALIDATION SET --------------")
+        showResultsCrossVal(int_metrics, circ_metrics, lbp_metrics,gb_metrics, all_metrics)
+        print("---------------TEST SET --------------")
+        showResultsCrossVal(test_int_metrics, test_circ_metrics, test_lbp_metrics, test_gb_metrics, test_all_metrics)
+       
+def showResultsCrossVal(int_metrics, circ_metrics, lbp_metrics,gb_metrics, all_metrics):
+    print("\nIntensity Features only \n=======================")
+    performaceCrossVal(int_metrics)
+    print("\nCircular Features\n=======================")
+    performaceCrossVal(circ_metrics)
+    print("\nLBP Features only \n=======================")
+    performaceCrossVal(lbp_metrics)
+    print("\nGabor Features only \n=======================")
+    performaceCrossVal(gb_metrics)
+    print("\nAll Features\n=======================")
+    performaceCrossVal(all_metrics)
 
 """
 Measure cross-validation performance
@@ -213,66 +233,34 @@ def getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, t
     prediction_all = getPredictionSVM(train_features, train_y, val_features, val_y)
     all_metrics = textureMetrics(prediction_all, val_y)
        
-    """
-    for i in range(len(test_x)):
-        showImages([test_x[i]], [test_masks[i]], nodules_and_mask = True, overlay = False)
-        
-        print("Intensity = %.0f" % prediction_int[i])
-        print("Circular = %.0f" % prediction_circ[i])
-        print("LBP = %.0f" % prediction_lbp[i])
-        print("Gabor = %.0f" % prediction_gb[i])
-        print("All = %.0f" % prediction_all[i])
-        print("GT = %.0f" % val_y[i])
     
-    """ 
-    
-    """
     print("------------------------------------------- TEST SET -------------------------------------------")
     
     print("\nIntensity Features only \n=======================")
     prediction_int = getPredictionSVM(train_int ,train_y, test_int , test_y)
-    prediction_KNN_int = getPredictionKNN(train_int ,train_y, test_int , test_y)
-    print("\nSVM\n=======================")
-    int_metrics = textureMetrics(prediction_int, test_y)
-    print("\nkNN\n=======================")
-    int_kNN_metrics = textureMetrics(prediction_KNN_int, test_y)
+    test_int_metrics = textureMetrics(prediction_int, test_y)
+    
         
     print("\nCircular Features only \n=======================")
     prediction_circ = getPredictionSVM(train_circ, train_y, test_circ, test_y)
-    prediction_KNN_circ = getPredictionKNN(train_circ ,train_y, test_circ, test_y)
-    print("\nSVM\n=======================")
-    circ_metrics = textureMetrics(prediction_circ, test_y)
-    print("\nkNN\n=======================")
-    circ_kNN_metrics = textureMetrics(prediction_KNN_circ, test_y)
-    
+    test_circ_metrics = textureMetrics(prediction_circ, test_y)
+
     print("\nLBP Features only \n=======================")
     prediction_lbp = getPredictionSVM(train_lbp, train_y, test_lbp, test_y)
-    prediction_KNN_lbp = getPredictionKNN(train_lbp ,train_y, test_lbp, test_y)
-    print("\nSVM\n=======================")
-    lbp_metrics = textureMetrics(prediction_lbp, test_y)
-    print("\nkNN\n=======================")
-    lbp_kNN_metrics = textureMetrics(prediction_KNN_lbp, test_y)
+    test_lbp_metrics = textureMetrics(prediction_lbp, test_y)
+
         
     print("\nGabor Features only \n=======================")
     prediction_gb = getPredictionSVM(train_gabor, train_y, test_gabor, test_y)
-    prediction_KNN_gb = getPredictionKNN(train_gabor ,train_y, test_gabor, test_y)
-    print("\nSVM\n=======================")
-    gb_metrics = textureMetrics(prediction_gb, test_y)
-    print("\nkNN\n=======================")
-    gb_kNN_metrics = textureMetrics(prediction_KNN_gb, test_y)
-      
+    test_gb_metrics = textureMetrics(prediction_gb, test_y)
+    
     print("\nAll Features\n=======================")
     train_features = np.concatenate((train_int, train_circ,train_gabor,train_lbp), axis=1)
     test_features = np.concatenate((test_int, test_circ, test_gabor,test_lbp), axis=1)
     prediction_all = getPredictionSVM(train_features, train_y, test_features, test_y)
-    prediction_kNN_all = getPredictionKNN(train_features, train_y, test_features, test_y)
-    print("\nSVM\n=======================")
-    all_metrics = textureMetrics(prediction_all, test_y)
-    print("\nkNN\n=======================")
-    all_kNN_metrics = predctictiontextureMetrics(prediction_kNN_all, test_y)
-    """
+    test_all_metrics = textureMetrics(prediction_all, test_y)
+   
     
-    
-    return int_metrics, circ_metrics, lbp_metrics, gb_metrics, all_metrics
+    return int_metrics, circ_metrics, lbp_metrics, gb_metrics, all_metrics, test_int_metrics, test_circ_metrics, test_lbp_metrics, test_gb_metrics, test_all_metrics
     
 run("cross_val")
