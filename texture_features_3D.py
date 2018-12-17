@@ -8,11 +8,11 @@ Texture Features
 """
 
 def getTextureFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks):
-    train_gabor, val_gabor, test_gabor, filtered_ims = getGaborFilter(train_x, train_masks, val_x, val_masks, test_x, test_masks)
+    train_gabor, val_gabor, test_gabor = getGaborFilter(train_x, train_masks, val_x, val_masks, test_x, test_masks)
     train_lbp, val_lbp, test_lbp = getLBPFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks, 1*3,8*3)
     
 
-    return train_gabor, val_gabor, test_gabor,train_lbp, val_lbp, test_lbp, filtered_ims
+    return train_gabor, val_gabor, test_gabor,train_lbp, val_lbp, test_lbp
 """
 LBP Features
 ==============================================================================
