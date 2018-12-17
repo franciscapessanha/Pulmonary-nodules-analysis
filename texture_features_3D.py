@@ -88,4 +88,4 @@ def getGaborFilter(train_x, train_masks, val_x, val_masks, test_x, test_masks):
     val_gabor_features = reshapeGabor(filtered_ims_val, val_x,slices_per_nodule_val)
     test_gabor_features = reshapeGabor(filtered_ims_test, test_x,slices_per_nodule_test)
     
-    return train_gabor_features, val_gabor_features, test_gabor_features, filtered_ims_train
+    return train_gabor_features, val_gabor_features, test_gabor_features

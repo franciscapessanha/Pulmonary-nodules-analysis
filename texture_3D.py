@@ -262,4 +262,4 @@ def getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, t
     
     return int_metrics, circ_metrics, lbp_metrics, gb_metrics, all_metrics, test_int_metrics, test_circ_metrics, test_lbp_metrics, test_gb_metrics, test_all_metrics
     
-#run("cross_val")
+run("cross_val")
