@@ -11,6 +11,7 @@ from keras.layers import Conv2D, MaxPooling2D
 from keras.layers.normalization import BatchNormalization
 from keras.layers.advanced_activations import LeakyReLU
 from keras.preprocessing.image import ImageDataGenerator
+from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 import keras
 
 
@@ -135,15 +136,13 @@ def train_model(train_slices, test_slices, val_slices, train_Y_one_hot, test_Y_o
     
     #during the training, ReLU units can "die". This can happen when a large gradient flows through a ReLU neuron: it can cause the weights to update in such a way that the neuron will never activate on any data point again. If this happens, then the gradient flowing through the unit will forever be zero from that point on. Leaky ReLUs attempt to solve this: the function will not be zero but will instead have a small negative slope.
     fashion_model = Sequential()
-    fashion_model.add(Conv2D(16, kernel_size=(5, 5), input_shape=(51,51,1),padding='same'))
-    fashion_model.add(LeakyReLU(alpha=0.1))
-    fashion_model.add(MaxPooling2D((3, 3),padding='same'))
+    fashion_model.add(Conv2D(16, kernel_size=(5, 5), input_shape=(51,51,1),padding='same', activation='relu'))
+    fashion_model.add(MaxPooling2D((3, 3), padding='same'))
     fashion_model.add(BatchNormalization())
     fashion_model.add(Dropout(0.2))
     
     
-    fashion_model.add(Conv2D(64, (5, 5),padding='same'))
-    fashion_model.add(LeakyReLU(alpha=0.1))
+    fashion_model.add(Conv2D(64, (5, 5), padding='same',activation='relu'))
     fashion_model.add(MaxPooling2D((3, 3),padding='same'))
     fashion_model.add(BatchNormalization())
     fashion_model.add(Dropout(0.4))
@@ -155,11 +154,16 @@ def train_model(train_slices, test_slices, val_slices, train_Y_one_hot, test_Y_o
     fashion_model.add(Dropout(0.5))
     fashion_model.add(Dense(num_classes, activation='softmax'))
     
+    callbacks = [
+        ModelCheckpoint('model2dtextura.h5', verbose=0, save_best_only=True, save_weights_only=True)
+    ]
     
-    fashion_model.compile(loss=keras.losses.categorical_crossentropy, optimizer=keras.optimizers.Adam(),metrics=['accuracy'])
+    fashion_model.compile(loss=keras.losses.categorical_crossentropy, optimizer=keras.optimizers.Adam())
     #fashion_model.summary()
-    fashion_train = fashion_model.fit_generator(image_gen.flow(train_slices, train_Y_one_hot, batch_size=batch_size),steps_per_epoch=10, epochs=epochs,verbose=0,validation_data=(val_slices, val_Y_one_hot), class_weight=class_weights)
+    fashion_train = fashion_model.fit_generator(image_gen.flow(train_slices, train_Y_one_hot, batch_size=batch_size),steps_per_epoch=10, epochs=epochs,callbacks=callbacks, verbose=0,validation_data=(val_slices, val_Y_one_hot), class_weight=class_weights)
 
+    fashion_model.load_weights('model2dtextura.h5')
+    
     predicted_classes = fashion_model.predict(test_slices)
     predicted_classes = np.argmax(np.round(predicted_classes),axis=1)
     
@@ -183,15 +187,9 @@ Returns:
 """
 def show_loss_accuracy(fashion_train):
     # Show
-    accuracy = fashion_train.history['acc']
-    val_accuracy = fashion_train.history['val_acc']
-    epochs = range(len(accuracy))
     loss = fashion_train.history['loss']
     val_loss = fashion_train.history['val_loss']
-    plt.plot(epochs, accuracy, 'bo', label='Training accuracy')
-    plt.plot(epochs, val_accuracy, 'b', label='Validation accuracy')
-    plt.title('Training and validation accuracy')
-    plt.legend()
+    epochs = range(len(loss))
     plt.figure()
     plt.plot(epochs, loss, 'bo', label='Training loss')
     plt.plot(epochs, val_loss, 'b', label='Validation loss')

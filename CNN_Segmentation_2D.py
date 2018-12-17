@@ -16,25 +16,36 @@ from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from keras.optimizers import Adam
 from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
 #import keras
-#train_slices, train_slices_masks, y_train, test_slices, test_slices_masks, y_test , val_slices, val_slices_masks, y_val = getData()
-#plt.imshow(test_slices_masks[1], cmap=plt.cm.gray)
+
 import cv2
+
 
 #%%
 
 
-def run_segmentation_CNN():
-    train_slices, train_slices_masks, y_train, val_slices, val_slices_masks, y_val, test_slices, test_slices_masks, y_test = getData(mode="cross_val")
-    
-    for train_x, train_masks, val_x, val_masks in zip(train_slices, train_slices_masks, val_slices, val_slices_masks):
-        
-        train, test, val, trainMasks, testMasks, valMasks=prepare_CNN(train_x, train_masks, val_x, val_masks, test_slices, test_slices_masks)
+def run_segmentation_CNN(mode = "default"):
+    if mode == "default": 
+        train_slices, train_slices_masks, _, val_slices, val_slices_masks, _, test_slices, test_slices_masks, _ = getData()
+            
+        train, test, val, trainMasks, testMasks, valMasks=prepare_CNN(train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks)
         results, accuracy, dice, jaccard, preds_test_nodules, accuracy_val, dice_val, jaccard_val, preds_val_nodules=train_model(train, test, val, trainMasks, testMasks, valMasks)
         plot_loss(results)
         print("Test set: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice, jaccard, accuracy))
         print("validation set: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice_val, jaccard_val, accuracy_val))
+        
+    
+    if mode == "cross_val": 
+        train_slices, train_slices_masks, _, val_slices, val_slices_masks, _, test_slices, test_slices_masks, _ = getData(mode="cross_val")
+        
+        for train_x, train_masks, val_x, val_masks in zip(train_slices, train_slices_masks, val_slices, val_slices_masks):
+            
+            train, test, val, trainMasks, testMasks, valMasks=prepare_CNN(train_x, train_masks, val_x, val_masks, test_slices, test_slices_masks)
+            results, accuracy, dice, jaccard, preds_test_nodules, accuracy_val, dice_val, jaccard_val, preds_val_nodules=train_model(train, test, val, trainMasks, testMasks, valMasks)
+            plot_loss(results)
+            print("Test set: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice, jaccard, accuracy))
+            print("validation set: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice_val, jaccard_val, accuracy_val))
 
-    return preds_test_nodules, preds_val_nodules
+    
 
 #%%
     """
@@ -77,9 +88,8 @@ def prepare_CNN(train_slices, train_slices_masks, val_slices, val_slices_masks, 
     val_slices= [cv2.copyMakeBorder(val_slices[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(val_slices))]
     test_slices= [cv2.copyMakeBorder(test_slices[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(test_slices))]
     train_slices_masks= [cv2.copyMakeBorder(train_slices_masks[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(train_slices_masks))]
-    test_slices_masks= [cv2.copyMakeBorder(test_slices_masks[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(test_slices_masks))]
     val_slices_masks= [cv2.copyMakeBorder(val_slices_masks[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(val_slices_masks))]
-    
+
 
     train_slices_masks = np.asarray(train_slices_masks)
     test_slices_masks = np.asarray(test_slices_masks)
@@ -102,7 +112,7 @@ def prepare_CNN(train_slices, train_slices_masks, val_slices, val_slices_masks, 
     val_slices = val_slices.reshape(-1, 64,64, 1)
     
     train_slices_masks = train_slices_masks.reshape(-1,64,64,1)
-    test_slices_masks = test_slices_masks.reshape(-1,64,64,1)
+    
     val_slices_masks = val_slices_masks.reshape(-1, 64,64, 1)
     
    
@@ -177,6 +187,31 @@ def get_unet(input_img, n_filters=16, dropout=0.4, batchnorm=True):
     return model
 
 #%%
+    """
+IoU_loss
+===============
+defenition of loss for binary problem - try to maximize the jaccard coefficient ( as only true values matter)
+it solves the problem of having more false (0) pixeis
+
+Arguments:
+    
+Returns:
+    * results- coefiicient to minimize (1-jaccard)
+"""
+
+from keras import backend as K
+
+def IoU_loss(y_true,y_pred):
+    smooth = 1e-12
+    # author = Vladimir Iglovikov
+    intersection = K.sum(y_true * y_pred)
+    sum_ = K.sum(y_true + y_pred)
+
+    jac = (intersection + smooth) / (sum_ - intersection + smooth)
+
+    return K.mean(1-jac)
+
+#%%
 """
 train_model
 ===============
@@ -200,10 +235,24 @@ def train_model(train_slices, test_slices, val_slices, train_slices_masks, test_
     input_img = Input((im_height, im_width, 1), name='img')
     model = get_unet(input_img, n_filters=3, dropout=0.05, batchnorm=True)
     
-    model.compile(optimizer=Adam(), loss="binary_crossentropy")
+    
+    # define data preparation- keras data augmentation
+    image_gen = ImageDataGenerator(rotation_range=180,width_shift_range=.15,height_shift_range=.15,horizontal_flip=True, vertical_flip=True)
+    # fit parameters from data
+    image_gen.fit(train_slices, augment=True)
+    
+    
+    model.compile(optimizer=Adam(), loss=IoU_loss)
     #model.summary()
     
-    results = model.fit(train_slices, train_slices_masks, batch_size=batch, epochs=epochs, verbose=0, validation_data=(val_slices, val_slices_masks))
+    callbacks = [
+        ModelCheckpoint('model2dsegmentação.h5', verbose=0, save_best_only=True, save_weights_only=True)
+    ]
+    
+    results = model.fit_generator(image_gen.flow(train_slices, train_slices_masks, batch_size=batch),steps_per_epoch=10, epochs=epochs, callback=callbacks, verbose=0, validation_data=(val_slices, val_slices_masks))
+    
+    fashion_model.load_weights('model2dsegmentação.h5')
+    
     
     treshold=(0.35,0.4, 0.45, 0.5,0.55,0.6,0.65,0.7,0.75)
     maximo=0
@@ -238,12 +287,34 @@ def train_model(train_slices, test_slices, val_slices, train_slices_masks, test_
     preds_test_nodules = (preds_test >best_treshold).astype(np.uint8)
     
     preds_test_nodules=preds_test_nodules.reshape(-1,64,64)
-    test_slices_masks=test_slices_masks.reshape(-1,64,64)
+    #test_slices_masks=test_slices_masks.reshape(-1,51,51)
+    
+    #cut the border previously used to match the ground truth
+    border_size_top_right=6
+    border_size_bottom_left=6
+    preds_test_nodules=[nodule[border_size_top_right:-(border_size_top_right+1),border_size_bottom_left:-(border_size_bottom_left+1)] for nodule in preds_test_nodules]
+    
+    #Aplly morphologic operation to close some holes on predicted images
+    preds_test_nodules=closing(preds_test_nodules)
+    
     
     accuracy, dice, jaccard = confusionMatrix(np.hstack(np.hstack(preds_test_nodules)), np.hstack(np.hstack(test_slices_masks)))
 
     return results, accuracy, dice, jaccard, preds_test_nodules, accuracy_val, dice_val, jaccard_val, preds_val_nodules
 
+
+#%%
+def closing(preds_image):
+    new_preds=[]
+    for i in range(len(preds_image)):
+       
+        kernel_ellipse = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
+        dilated_mask = cv2.dilate(preds_image[i],kernel_ellipse,iterations = 2)
+        erode_mask = cv2.erode(dilated_mask,kernel_ellipse,iterations = 2) 
+        
+        new_preds.append(erode_mask)
+    return new_preds
+       
 #%%
 
 def confusionMatrix(predictions, labels):
@@ -274,17 +345,26 @@ def confusionMatrix(predictions, labels):
 
 
 #%%
+"""
+show loss
+===============
+shows the progression of loss during the training of the model
+
+Arguments: results - model trained
+    
+Returns:
+    *void
+"""
 def plot_loss(results):
     
     plt.figure(figsize=(8, 8))
     plt.title("Learning curve")
-    plt.plot(results.history["loss"], label="loss")
-    plt.plot(results.history["val_loss"], label="val_loss")
-    plt.plot( np.argmin(results.history["val_loss"]), np.min(results.history["val_loss"]), marker="x", color="r", label="best model")
+    plt.plot(results.history["loss"], 'bo', label="loss")
+    plt.plot(results.history["val_loss"],'b', label="val_loss")
     plt.xlabel("Epochs")
     plt.ylabel("log_loss")
     plt.legend();
 
+
 #%%
-    
-preds_test_nodules, preds_val_nodules=run_segmentation_CNN()
+run_segmentation_CNN()
