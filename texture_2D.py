@@ -18,7 +18,8 @@ Run
 def run(mode = "default"):
     if mode == "default": 
         train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, test_masks, test_y = getData()
-        int_metrics, circ_metrics, lbp_metrics, gb_metrics, all_metrics, int_kNN_metrics, circ_kNN_metrics, lbp_kNN_metrics, gb_kNN_metrics, all_kNN_metrics = getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, test_masks, test_y)
+        _, _, _, _, _, _, _, _, _,_ = getTexture(train_x, train_masks, train_y, val_x, val_masks)
+        _, _, _, _, _, _, _, _, _,_  = getTexture(train_x, train_masks, train_y, test_x, test_masks)
         
     elif mode == "cross_val":
         int_metrics = []
@@ -270,8 +271,8 @@ def getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y):
     gb_kNN_metrics = textureMetrics(prediction_kNN_gb, val_y)
     
     print("\nAll Features\n=======================")
-    train_features = np.concatenate((train_int, train_circ,train_gabor), axis=1)
-    val_features = np.concatenate((val_int, val_circ, val_gabor), axis=1)
+    train_features = np.concatenate((train_int, train_circ,train_gabor, train_lbp), axis=1)
+    val_features = np.concatenate((val_int, val_circ, val_gabor, val_lbp), axis=1)
     prediction_all = getPredictionSVM(train_features, train_y, val_features, val_y)
     prediction_kNN_all = getPredictionKNN(train_features ,train_y, val_features , val_y)
     
