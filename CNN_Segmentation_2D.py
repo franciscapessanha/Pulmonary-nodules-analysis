@@ -11,7 +11,7 @@ from keras.layers import Input, BatchNormalization, Activation, Dense, Dropout
 from keras.layers.core import Lambda, RepeatVector, Reshape
 from keras.layers.convolutional import Conv2D, Conv2DTranspose
 from keras.layers.pooling import MaxPooling2D, GlobalMaxPool2D
-from keras.layers.merge import concatenate, add
+from keras.layers.merge import concatenate
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from keras.optimizers import Adam
 from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
@@ -21,64 +21,20 @@ from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_a
 import cv2
 
 #%%
-"""
-train_model
-===============
-train the model with tarin set and validation set to define treshold - evaluates test set
 
-Arguments:
-    
-Returns:
-    * results- result of the trained model with keras
-    accuracy, dice, jaccard - evaluation scores for the test set
-    preds_test_nodules - predicted nodules on test set
-"""
 
-def train_model():
-    # define parameters
-    im_width = 64
-    im_height = 64
-    epochs=100
-    batch=92
+def run_segmentation_CNN():
+    train_slices, train_slices_masks, y_train, val_slices, val_slices_masks, y_val, test_slices, test_slices_masks, y_test = getData(mode="cross_val")
     
-    train_slices, test_slices, val_slices, train_slices_masks, test_slices_masks, val_slices_masks=prepare_CNN()
-    
-    input_img = Input((im_height, im_width, 1), name='img')
-    model = get_unet(input_img, n_filters=3, dropout=0.05, batchnorm=True)
-    
-    model.compile(optimizer=Adam(), loss="binary_crossentropy")
-    #model.summary()
-    
-    results = model.fit(train_slices, train_slices_masks, batch_size=batch, epochs=epochs, validation_data=(val_slices, val_slices_masks))
-    
-    treshold=(0.35,0.4, 0.45, 0.5,0.55,0.6,0.65,0.7,0.75)
-    maximo=0
-    # Predict for test with treshold
-    preds_val = model.predict(val_slices, verbose=1)
-    for tresh in treshold:
+    for train_x, train_masks, val_x, val_masks in zip(train_slices, train_slices_masks, val_slices, val_slices_masks):
         
-        preds_val_nodules = (preds_val >tresh).astype(np.uint8)
-        
-        preds_val_nodules=preds_val_nodules.reshape(-1,64,64)
-        val_slices_masks=val_slices_masks.reshape(-1,64,64)
-        accuracy, dice, jaccard = confusionMatrix(np.hstack(np.hstack(preds_val_nodules)), np.hstack(np.hstack(val_slices_masks)))
-        
-        metrics=dice+jaccard  # the best result will dictate which is the bst treshold
-        
-        if metrics > maximo :
-            maximo=metrics
-            best_treshold=tresh
-    
-    # Predict for test with treshold already defined by validation set
-    preds_test = model.predict(test_slices, verbose=1)
-    preds_test_nodules = (preds_test >best_treshold).astype(np.uint8)
-    
-    preds_test_nodules=preds_test_nodules.reshape(-1,64,64)
-    test_slices_masks=test_slices_masks.reshape(-1,64,64)
-    
-    accuracy, dice, jaccard = confusionMatrix(np.hstack(np.hstack(preds_test_nodules)), np.hstack(np.hstack(test_slices_masks)))
-    
-    return results, accuracy, dice, jaccard, preds_test_nodules
+        train, test, val, trainMasks, testMasks, valMasks=prepare_CNN(train_x, train_masks, val_x, val_masks, test_slices, test_slices_masks)
+        results, accuracy, dice, jaccard, preds_test_nodules, accuracy_val, dice_val, jaccard_val, preds_val_nodules=train_model(train, test, val, trainMasks, testMasks, valMasks)
+        plot_loss(results)
+        print("Test set: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice, jaccard, accuracy))
+        print("validation set: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice_val, jaccard_val, accuracy_val))
+
+    return preds_test_nodules, preds_val_nodules
 
 #%%
     """
@@ -93,27 +49,9 @@ reshaped for input on the CNN
      train_slices_masks, test_slices_masks, val_slices_masks  - classes in the format of one-hot-vector (1,0,0)
 """
 
-def prepare_CNN():
-    train_slices, train_slices_masks, y_train, val_slices, val_slices_masks, y_val, test_slices, test_slices_masks, y_test = getData()
+def prepare_CNN(train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks):
     
-    
-    fig, axes = plt.subplots(1, 2, figsize=(8, 4))
-    ax = axes.ravel()
-
-    ax[0].set_title('Test nodule')
-    ax[0].imshow(test_slices[3], cmap=plt.cm.gray, interpolation='nearest')
-    ax[0].set_axis_off()
-    
-    #chull = cv2.erode(chull, kernel, iterations = 1)
-    ax[1].set_title('Test mask')
-    ax[1].imshow(test_slices_masks[3], cmap=plt.cm.gray, interpolation='nearest')
-    ax[1].set_axis_off()
-    
-    plt.tight_layout()
-    plt.show()
-    
-    
-    #Apply lung mask
+    #Aplly lung mask
     for i in range(len(train_slices)):
         chull=getLungMask(train_slices[i])
         train_slices[i][chull == 0] = 0
@@ -125,21 +63,7 @@ def prepare_CNN():
         test_slices[i][chull == 0] = 0
         
         
-    fig, axes = plt.subplots(1, 2, figsize=(8, 4))
-    ax = axes.ravel()
 
-    ax[0].set_title('Test nodule')
-    ax[0].imshow(test_slices[3], cmap=plt.cm.gray, interpolation='nearest')
-    ax[0].set_axis_off()
-    
-    #chull = cv2.erode(chull, kernel, iterations = 1)
-    ax[1].set_title('Test mask')
-    ax[1].imshow(test_slices_masks[3], cmap=plt.cm.gray, interpolation='nearest')
-    ax[1].set_axis_off()
-    
-    plt.tight_layout()
-    plt.show()
-    
     mean_int=np.mean(train_slices)
     std_int=np.std(train_slices)
     
@@ -149,28 +73,13 @@ def prepare_CNN():
     
     
     #reshape to a multiple of 16 to better applye the U-net CNN - padding from 51 to 64
-    train_slices_masks= [cv2.copyMakeBorder(train_slices_masks[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(train_slices_masks))]
-    test_slices_masks= [cv2.copyMakeBorder(test_slices_masks[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(test_slices_masks))]
-    val_slices_masks= [cv2.copyMakeBorder(val_slices_masks[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(val_slices_masks))]
     train_slices= [cv2.copyMakeBorder(train_slices[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(train_slices))]
     val_slices= [cv2.copyMakeBorder(val_slices[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(val_slices))]
     test_slices= [cv2.copyMakeBorder(test_slices[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(test_slices))]
+    train_slices_masks= [cv2.copyMakeBorder(train_slices_masks[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(train_slices_masks))]
+    test_slices_masks= [cv2.copyMakeBorder(test_slices_masks[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(test_slices_masks))]
+    val_slices_masks= [cv2.copyMakeBorder(val_slices_masks[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(val_slices_masks))]
     
-    
-    fig, axes = plt.subplots(1, 2, figsize=(8, 4))
-    ax = axes.ravel()
-
-    ax[0].set_title('Test nodule')
-    ax[0].imshow(test_slices[3], cmap=plt.cm.gray, interpolation='nearest')
-    ax[0].set_axis_off()
-    
-    #chull = cv2.erode(chull, kernel, iterations = 1)
-    ax[1].set_title('Test mask')
-    ax[1].imshow(test_slices_masks[3], cmap=plt.cm.gray, interpolation='nearest')
-    ax[1].set_axis_off()
-    
-    plt.tight_layout()
-    plt.show()
 
     train_slices_masks = np.asarray(train_slices_masks)
     test_slices_masks = np.asarray(test_slices_masks)
@@ -220,7 +129,7 @@ def conv2d_block(input_tensor, n_filters, kernel_size=3, batchnorm=True):
 
 
 
-def get_unet(input_img, n_filters=17, dropout=0.4, batchnorm=True):
+def get_unet(input_img, n_filters=16, dropout=0.4, batchnorm=True):
     
     
     # contracting path
@@ -267,7 +176,73 @@ def get_unet(input_img, n_filters=17, dropout=0.4, batchnorm=True):
     model = Model(inputs=[input_img], outputs=[outputs])
     return model
 
+#%%
+"""
+train_model
+===============
+train the model with tarin set and validation set to define treshold - evaluates test set
 
+Arguments:
+    
+Returns:
+    * results- result of the trained model with keras
+    accuracy, dice, jaccard - evaluation scores for the test set
+    preds_test_nodules - predicted nodules on test set
+"""
+
+def train_model(train_slices, test_slices, val_slices, train_slices_masks, test_slices_masks, val_slices_masks):
+    # define parameters
+    im_width = 64
+    im_height = 64
+    epochs=100
+    batch=len(train_slices)
+    
+    input_img = Input((im_height, im_width, 1), name='img')
+    model = get_unet(input_img, n_filters=3, dropout=0.05, batchnorm=True)
+    
+    model.compile(optimizer=Adam(), loss="binary_crossentropy")
+    #model.summary()
+    
+    results = model.fit(train_slices, train_slices_masks, batch_size=batch, epochs=epochs, verbose=0, validation_data=(val_slices, val_slices_masks))
+    
+    treshold=(0.35,0.4, 0.45, 0.5,0.55,0.6,0.65,0.7,0.75)
+    maximo=0
+    # Predict for test with treshold
+    preds_train = model.predict(train_slices, verbose=0)
+    for tresh in treshold:
+        
+        preds_train_nodules = (preds_train >tresh).astype(np.uint8)
+        
+        preds_train_nodules=preds_train_nodules.reshape(-1,64,64)
+        train_slices_masks=train_slices_masks.reshape(-1,64,64)
+        _, dice, jaccard = confusionMatrix(np.hstack(np.hstack(preds_train_nodules)), np.hstack(np.hstack(train_slices_masks)))
+        
+        metrics=dice+jaccard  # the best result will dictate which is the bst treshold
+        
+        if metrics > maximo :
+            maximo=metrics
+            best_treshold=tresh
+            
+    # Predict for test with treshold already defined by training set
+    preds_val = model.predict(val_slices, verbose=0)
+    preds_val_nodules = (preds_val >best_treshold).astype(np.uint8)
+    
+    val_slices_masks=val_slices_masks.reshape(-1,64,64)
+    preds_val_nodules=preds_val_nodules.reshape(-1,64,64)
+    
+    
+    accuracy_val, dice_val, jaccard_val = confusionMatrix(np.hstack(np.hstack(preds_val_nodules)), np.hstack(np.hstack(val_slices_masks)))
+
+    # Predict for test with treshold already defined by training set
+    preds_test = model.predict(test_slices, verbose=0)
+    preds_test_nodules = (preds_test >best_treshold).astype(np.uint8)
+    
+    preds_test_nodules=preds_test_nodules.reshape(-1,64,64)
+    test_slices_masks=test_slices_masks.reshape(-1,64,64)
+    
+    accuracy, dice, jaccard = confusionMatrix(np.hstack(np.hstack(preds_test_nodules)), np.hstack(np.hstack(test_slices_masks)))
+
+    return results, accuracy, dice, jaccard, preds_test_nodules, accuracy_val, dice_val, jaccard_val, preds_val_nodules
 
 #%%
 
@@ -276,7 +251,8 @@ def confusionMatrix(predictions, labels):
     false_negatives = 0
     false_positives = 0
     true_negatives = 0
-    
+    predictions= predictions.astype('float32')
+    labels = labels.astype('float32')
     for i in range(len(predictions)):
         if predictions[i] == labels[i] :
             if  predictions[i] == 1.0:
@@ -311,5 +287,4 @@ def plot_loss(results):
 
 #%%
     
-results, accuracy, dice, jaccard, preds_test_nodules= train_model()
-plot_loss(results)
+preds_test_nodules, preds_val_nodules=run_segmentation_CNN()
