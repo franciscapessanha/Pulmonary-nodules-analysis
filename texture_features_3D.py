@@ -70,13 +70,17 @@ def reshapeGabor(filtered_ims, nodules, slices_per_nodule):
         n_slices = slices_per_nodule[j]
         first = int(np.sum(slices_per_nodule[0:j]) * 36)
         last = int(np.sum(slices_per_nodule[0:j]) * 36 + 36 * n_slices)
+        
         each_img_nodule = filtered_ims[first:last]
         nodule_metrics = []
-        for i in range(len(each_img_nodule)):
-            nodule_metrics.append([np.mean(each_img_nodule[i]), np.std(each_img_nodule[i])])
-        gabor_results.append(np.hstack(nodule_metrics))
+       
+        for i in range(36):
+            values = [each_img_nodule[k] for k in range(i,len(each_img_nodule)-(35-i), 36)]
+            nodule_metrics.append([np.mean(np.hstack(values)), np.std(np.hstack(values))])
+            print(np.shape(nodule_metrics))
          
-            
+        gabor_results.append(nodule_metrics)
+         
     return gabor_results
 
 def getGaborFilter(train_x, train_masks, val_x, val_masks, test_x, test_masks):
