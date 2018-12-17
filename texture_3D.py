@@ -38,8 +38,9 @@ def run(mode = "default"):
         
         cv_train_x, cv_train_masks, cv_train_y , cv_val_x, cv_val_masks, cv_val_y, test_x, test_masks, test_y = getData(mode = "cross_val", type_ = "volume")
         for train_x, train_masks, train_y, val_x, val_masks, val_y in zip(cv_train_x, cv_train_masks,cv_train_y, cv_val_x, cv_val_masks, cv_val_y):
+            
             int_metrics, circ_metrics, lbp_metrics, gb_metrics, all_metrics, int_kNN_metrics, circ_kNN_metrics, lbp_kNN_metrics, gb_kNN_metrics, all_kNN_metrics = getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, test_masks, test_y)
-           
+            
             
             print("SVM\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
             print("\nIntensity Features only \n=======================")
@@ -142,13 +143,13 @@ def getPerformanceMetrics(predictions, labels):
     true_negatives = c_matrix[1,1]
 
     accuracy = (true_positives + true_negatives)/(true_positives + true_negatives + false_positives + false_negatives)
-    precision = (true_positives)/(true_positives + false_positives)
+    precision = (true_positives)/(true_positives + false_positives + 10**-12)
+    
     recall = (true_positives)/(true_positives + false_negatives)
-    matrix = np.asarray([[true_positives, false_negatives], [false_positives, true_negatives]])
+    #matrix = np.asarray([[true_positives, false_negatives], [false_positives, true_negatives]])
     
     fp_rate, tp_rate, thresholds = metrics.roc_curve(labels, predictions, pos_label = 1)
     auc = metrics.auc(fp_rate, tp_rate)
-    
     
     return accuracy, precision, recall, auc
 
@@ -178,14 +179,14 @@ def textureMetrics(prediction, val_y):
     solid_pred, sub_solid_pred, non_solid_pred = separateClasses(prediction)
     solid_label, sub_solid_label, non_solid_label = separateClasses(val_y)
     
-    dice_solid, jaccard_solid, matrix_solid, accuracy_solid = getPerformanceMetrics(solid_pred, solid_label)
-    dice_sub_solid, jaccard_sub_solid, matrix_sub_solid, accuracy_sub_solid = getPerformanceMetrics(sub_solid_pred, sub_solid_label)
-    dice_non_solid, jaccard_non_solid, matrix_non_solid, accuracy_non_solid = getPerformanceMetrics(non_solid_pred, non_solid_label)
-    
-    print("Solid texture: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice_solid, jaccard_solid, accuracy_solid))
-    print("Sub solid texture: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice_sub_solid, jaccard_sub_solid, accuracy_sub_solid))
-    print("Non solid texture: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice_non_solid, jaccard_non_solid, accuracy_non_solid))
-
+    accuracy_solid, precision_solid, recall_solid, auc_solid = getPerformanceMetrics(solid_pred, solid_label)
+    accuracy_sub_solid, precision_sub_solid, recall_sub_solid, auc_sub_solid = getPerformanceMetrics(sub_solid_pred, sub_solid_label)
+    accuracy_non_solid, precision_non_solid, recall_non_solid, auc_non_solid = getPerformanceMetrics(non_solid_pred, non_solid_label)
+    print("Solid texture: The accuracy value is %.2f. The precision value is %.2f. The recall is %.2f. The AUC is %.2f" % (accuracy_solid, precision_solid, recall_solid, auc_solid))
+    print("Sub solid texture: The accuracy value is %.2f. The precision value is %.2f. The recall is %.2f. The AUC is %.2f" % (accuracy_sub_solid, precision_sub_solid, recall_sub_solid, auc_sub_solid))
+    print("Non solid texture: The accuracy value is %.2f. The precision value is %.2f. The recall is %.2f. The AUC is %.2f" % ( accuracy_non_solid, precision_non_solid, recall_non_solid, auc_non_solid))
+   
+    return [accuracy_solid, precision_solid, recall_solid, auc_solid, accuracy_sub_solid, precision_sub_solid, recall_sub_solid, auc_sub_solid,accuracy_non_solid, precision_non_solid, recall_non_solid, auc_non_solid]
 
 """
 Get Texture
@@ -208,33 +209,32 @@ def getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, t
     print("\nIntensity Features only \n=======================")
     prediction_int = getPredictionSVM(train_int ,train_y, val_int , val_y)
     int_metrics = textureMetrics(prediction_int, val_y)
-    prediction_kNN_int = getPredictionKNN(train_int ,train_y, test_int , test_y)
+    prediction_kNN_int = getPredictionKNN(train_int ,train_y, val_int , val_y)
     int_kNN_metrics = textureMetrics(prediction_kNN_int, val_y)
     
     print("\nCircular Features only \n=======================")
     prediction_circ = getPredictionSVM(train_circ, train_y, val_circ, val_y)
-    prediction_kNN_circ = getPredictionKNN(train_int ,train_y, test_int , test_y)
+    prediction_kNN_circ = getPredictionKNN(train_int ,train_y, val_int , val_y)
     circ_kNN_metrics = textureMetrics(prediction_kNN_circ, val_y)
     circ_metrics = textureMetrics(prediction_circ, val_y)
     
     print("\nLBP Features only \n=======================")
     prediction_lbp = getPredictionSVM(train_lbp, train_y, val_lbp, val_y)
-    prediction_kNN_lbp = getPredictionKNN(train_int ,train_y, test_int , test_y)
+    prediction_kNN_lbp = getPredictionKNN(train_int ,train_y, val_int , val_y)
     lbp_kNN_metrics = textureMetrics(prediction_kNN_lbp, val_y)
     lbp_metrics = textureMetrics(prediction_lbp, val_y)
     
     print("\nGabor Features only \n=======================")
     prediction_gb = getPredictionSVM(train_gabor, train_y, val_gabor, val_y)
-    prediction_kNN_gb = getPredictionKNN(train_int ,train_y, test_int , test_y)
+    prediction_kNN_gb = getPredictionKNN(train_int ,train_y, val_int ,val_y)
     gb_kNN_metrics = textureMetrics(prediction_kNN_gb, val_y)
     gb_metrics = textureMetrics(prediction_gb, val_y)
     
     print("\nAll Features\n=======================")
     train_features = np.concatenate((train_int, train_circ,train_lbp, train_gabor), axis=1)
     val_features = np.concatenate((val_int, val_circ, val_lbp, val_gabor), axis=1)
-    test_features = np.concatenate((test_int, test_circ, test_lbp, test_gabor), axis=1)
     
-    prediction_kNN_all = getPredictionKNN(train_int ,train_y, test_int , test_y)
+    prediction_kNN_all = getPredictionKNN(train_int ,train_y, val_int , val_y)
     all_kNN_metrics = textureMetrics(prediction_kNN_all, val_y)
     
     prediction_all = getPredictionSVM(train_features, train_y, val_features, val_y)
