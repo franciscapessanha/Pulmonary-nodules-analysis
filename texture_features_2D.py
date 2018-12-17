@@ -7,12 +7,12 @@ Texture Features
 ==============================================================================
 """
 
-def getTextureFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks):
-    train_gabor, val_gabor, test_gabor = getGaborFilter(train_x, train_masks, val_x, val_masks, test_x, test_masks)
-    train_lbp, val_lbp, test_lbp = getLBPFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks, 1*3,8*3)
+def getTextureFeatures(train_x, train_masks, val_x, val_masks,):
+    train_gabor, val_gabor = getGaborFilter(train_x, train_masks, val_x, val_masks)
+    train_lbp, val_lbp = getLBPFeatures(train_x, train_masks, val_x, val_masks, 1*3,8*3)
     
     #return train_gabor, val_gabor, test_gabor,train_lbp, val_lbp, test_lbp
-    return train_gabor, val_gabor, test_gabor,train_lbp, val_lbp, test_lbp
+    return train_gabor, val_gabor,train_lbp, val_lbp
 """
 LBP Features
 ==============================================================================
@@ -39,22 +39,14 @@ def calcHist(all_lbp, max_, min_):
     return all_hist
 
 
-def getLBPFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks, radius = 1,n_points = 8):
+def getLBPFeatures(train_x, train_masks, val_x, val_masks,radius = 1,n_points = 8):
     train_lbp, train_metrics = calcLBP(train_x, train_masks, n_points, radius)
     val_lbp, val_metrics = calcLBP(val_x, val_masks, n_points, radius)
-    test_lbp, test_metrics = calcLBP(test_x, test_masks, n_points, radius)
-
+  
     max_ = int(np.max(np.hstack(train_lbp)))
     min_ = int(np.min(np.hstack(train_lbp)))
-    """
-    train_hist = np.vstack(calcHist(train_lbp, max_, min_))
-    val_hist = np.vstack(calcHist(val_lbp, max_, min_))
-    test_hist = np.vstack(calcHist(test_lbp, max_, min_))
-    """
     
-    #return train_hist, val_hist, test_hist
-    return train_metrics, val_metrics, test_metrics
-
+    return train_metrics, val_metrics
 
 """
 Gabor Filter (frequency and orientation) Features
@@ -86,13 +78,13 @@ def reshapeGabor(filtered_ims, nodules):
             
     return gabor_results
 
-def getGaborFilter(train_x, train_masks, val_x, val_masks, test_x, test_masks):
+def getGaborFilter(train_x, train_masks, val_x, val_masks):
     filtered_ims_train = calculateGaborFilters(train_x, train_masks)
     filtered_ims_val = calculateGaborFilters(val_x, val_masks)
-    filtered_ims_test = calculateGaborFilters(test_x, test_masks)
+   
     
     train_gabor_features = reshapeGabor(filtered_ims_train, train_x)
     val_gabor_features = reshapeGabor(filtered_ims_val, val_x)
-    test_gabor_features = reshapeGabor(filtered_ims_test, test_x)
+
     
-    return train_gabor_features, val_gabor_features, test_gabor_features
+    return train_gabor_features, val_gabor_features

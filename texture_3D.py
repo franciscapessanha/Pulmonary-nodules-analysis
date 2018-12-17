@@ -13,6 +13,7 @@ import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 from int_features_3D import getIntensityFeatures
 from texture_features_3D import getTextureFeatures
+from sklearn import metrics
 """
 Run
 ===============================================================================
@@ -132,21 +133,24 @@ def confusionMatrix(predictions, labels):
                 
     return np.asarray([[true_positives, false_negatives], [false_positives, true_negatives]]) 
     
-def getPerformanceMetrics(predictions_outer_lung, labels_outer_lung):
-    c_matrix_outer_lung = confusionMatrix(predictions_outer_lung, labels_outer_lung)
+def getPerformanceMetrics(predictions, labels):
+    c_matrix = confusionMatrix(predictions, labels)
     
-    true_positives = c_matrix_outer_lung[0,0]
-    false_negatives = c_matrix_outer_lung[0,1]
-    false_positives = c_matrix_outer_lung[1,0]
-    true_negatives = c_matrix_outer_lung[1,1]
+    true_positives = c_matrix[0,0]
+    false_negatives = c_matrix[0,1]
+    false_positives = c_matrix[1,0]
+    true_negatives = c_matrix[1,1]
 
     accuracy = (true_positives + true_negatives)/(true_positives + true_negatives + false_positives + false_negatives)
-    
-    dice = (2*true_positives/(false_positives+false_negatives+(2*true_positives)))
-    jaccard = (true_positives)/(true_positives+false_positives+false_negatives)
+    precision = (true_positives)/(true_positives + false_positives)
+    recall = (true_positives)/(true_positives + false_negatives)
     matrix = np.asarray([[true_positives, false_negatives], [false_positives, true_negatives]])
     
-    return dice, jaccard, matrix, accuracy 
+    fp_rate, tp_rate, thresholds = metrics.roc_curve(labels, predictions, pos_label = 1)
+    auc = metrics.auc(fp_rate, tp_rate)
+    
+    
+    return accuracy, precision, recall, auc
 
 def separateClasses(predictSVM):
     solid =[] # label 2
