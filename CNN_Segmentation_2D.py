@@ -5,15 +5,15 @@ import matplotlib.pyplot as plt
 from lung_mask import getLungMask
 
 
-from keras.models import Model, load_model
-from keras.layers import Input, BatchNormalization, Activation, Dense, Dropout
-from keras.layers.core import Lambda, RepeatVector, Reshape
+from keras.models import Model
+from keras.layers import Input, BatchNormalization, Activation, Dropout
+
 from keras.layers.convolutional import Conv2D, Conv2DTranspose
 from keras.layers.pooling import MaxPooling2D
 from keras.layers.merge import concatenate
-from keras.callbacks import ReduceLROnPlateau
+from keras.callbacks import ModelCheckpoint
 from keras.optimizers import Adam
-from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
+from keras.preprocessing.image import ImageDataGenerator
 #import keras
 
 import cv2
@@ -65,7 +65,7 @@ reshaped for input on the CNN
 """
 
 def prepare_CNN(train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks):
-    
+
     #Aplly lung mask
     for i in range(len(train_slices)):
         chull=getLungMask(train_slices[i])
@@ -93,8 +93,8 @@ def prepare_CNN(train_slices, train_slices_masks, val_slices, val_slices_masks, 
     test_slices= [cv2.copyMakeBorder(test_slices[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(test_slices))]
     train_slices_masks= [cv2.copyMakeBorder(train_slices_masks[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(train_slices_masks))]
     val_slices_masks= [cv2.copyMakeBorder(val_slices_masks[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(val_slices_masks))]
-
-
+  
+    
     train_slices_masks = np.asarray(train_slices_masks)
     test_slices_masks = np.asarray(test_slices_masks)
     val_slices_masks = np.asarray(val_slices_masks)
@@ -308,9 +308,9 @@ def train_model(train_slices, test_slices, val_slices, train_slices_masks, test_
     border_size_bottom_left=6
     preds_test_nodules=[nodule[border_size_top_right:-(border_size_top_right+1),border_size_bottom_left:-(border_size_bottom_left+1)] for nodule in preds_test_nodules]
     
+    
     #Aplly morphologic operation to close some holes on predicted images
     preds_test_nodules=closing(preds_test_nodules)
-    
     
     accuracy, dice, jaccard = confusionMatrix(np.hstack(np.hstack(preds_test_nodules)), np.hstack(np.hstack(test_slices_masks)))
 
@@ -383,12 +383,10 @@ Returns:
 """
 def plot_loss(results):
     
-    plt.figure(figsize=(8, 8))
-    plt.title("Learning curve")
+    plt.figure()
+    plt.title("Training and Validation loss")
     plt.plot(results.history["loss"], 'bo', label="loss")
     plt.plot(results.history["val_loss"],'b', label="val_loss")
-    plt.xlabel("Epochs")
-    plt.ylabel("log_loss")
     plt.legend();
 
 

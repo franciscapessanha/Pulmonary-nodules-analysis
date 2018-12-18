@@ -159,7 +159,7 @@ def train_model(train_volumes, test_volumes, val_volumes, train_Y_one_hot, test_
     fashion_model.add(Dense(num_classes, activation='softmax'))
     
     
-    fashion_model.compile(loss=keras.losses.categorical_crossentropy, optimizer=keras.optimizers.Adam(),metrics=['accuracy'])
+    fashion_model.compile(loss=keras.losses.categorical_crossentropy, optimizer=keras.optimizers.Adam())
     #fashion_model.summary()
     
     callbacks = [
@@ -193,15 +193,9 @@ Returns:
 """
 def show_loss(fashion_train):
     # Show
-    accuracy = fashion_train.history['acc']
-    val_accuracy = fashion_train.history['val_acc']
-    epochs = range(len(accuracy))
     loss = fashion_train.history['loss']
     val_loss = fashion_train.history['val_loss']
-    plt.plot(epochs, accuracy, 'bo', label='Training accuracy')
-    plt.plot(epochs, val_accuracy, 'b', label='Validation accuracy')
-    plt.title('Training and validation accuracy')
-    plt.legend()
+    epochs = range(len(loss))
     plt.figure()
     plt.plot(epochs, loss, 'bo', label='Training loss')
     plt.plot(epochs, val_loss, 'b', label='Validation loss')
@@ -298,4 +292,4 @@ def separateClasses(predict):
     return solid, sub_solid, non_solid
 
 #%%
-run_CNN_texture_3D(mode='cross_val')
+run_CNN_texture_3D()
