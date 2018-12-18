@@ -12,7 +12,7 @@ from keras.layers.core import Lambda, RepeatVector, Reshape
 from keras.layers.convolutional import Conv2D, Conv2DTranspose
 from keras.layers.pooling import MaxPooling2D, GlobalMaxPool2D
 from keras.layers.merge import concatenate
-from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
+from keras.callbacks import ReduceLROnPlateau
 from keras.optimizers import Adam
 from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
 #import keras
@@ -304,6 +304,12 @@ def train_model(train_slices, test_slices, val_slices, train_slices_masks, test_
 
 
 #%%
+"""
+closing- morpological closing operation
+=================================================
+Arguments: image array
+return: image array after closing
+"""
 def closing(preds_image):
     new_preds=[]
     for i in range(len(preds_image)):

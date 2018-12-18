@@ -3,15 +3,15 @@
 from get_data import getData
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn import metrics
 
 from keras.utils import to_categorical
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten
 from keras.layers import Conv2D, MaxPooling2D
 from keras.layers.normalization import BatchNormalization
-from keras.layers.advanced_activations import LeakyReLU
 from keras.preprocessing.image import ImageDataGenerator
-from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
+from keras.callbacks import ModelCheckpoint
 import keras
 
 
@@ -23,17 +23,17 @@ def run_CNN_segmentation_2D(mode = "default"):
         train_slices, train_slices_masks, y_train, val_slices, val_slices_masks, y_val, test_slices, test_slices_masks, y_test = getData(mode = "default")
         train_slices, test_slices, val_slices, train_Y_one_hot, test_Y_one_hot, val_Y_one_hot=prepare_CNN(train_slices, train_slices_masks, y_train, test_slices, test_slices_masks, y_test , val_slices, val_slices_masks, y_val)
         predicted_classes, predicted_classes_val, fashion_train=train_model(train_slices, test_slices, val_slices, train_Y_one_hot, test_Y_one_hot, val_Y_one_hot) # model predicted for test set
-        show_loss_accuracy(fashion_train)
+        show_loss(fashion_train)
        
         solid_pred, sub_solid_pred, non_solid_pred = separateClasses(predicted_classes)
         solid_label, sub_solid_label, non_solid_label = separateClasses(y_test)
         
-        dice_solid, jaccard_solid, _, accuracy_solid = getPerformanceMetrics(solid_pred, solid_label)
-        dice_sub_solid, jaccard_sub_solid, _, accuracy_sub_solid = getPerformanceMetrics(sub_solid_pred, sub_solid_label)
-        dice_non_solid, jaccard_non_solid, _, accuracy_non_solid = getPerformanceMetrics(non_solid_pred, non_solid_label)
-        print("Solid texture: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice_solid, jaccard_solid, accuracy_solid))
-        print("Sub solid texture: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice_sub_solid, jaccard_sub_solid, accuracy_sub_solid))
-        print("Non solid texture: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice_non_solid, jaccard_non_solid, accuracy_non_solid))
+        accuracy_solid, precision_solid, recall_solid, auc_solid = getPerformanceMetrics(solid_pred, solid_label)
+        accuracy_sub, precision_sub, recall_sub, auc_sub = getPerformanceMetrics(sub_solid_pred, sub_solid_label)
+        accuracy_non, precision_non, recall_non, auc_non = getPerformanceMetrics(non_solid_pred, non_solid_label)
+        print("Solid texture: The accuracy value is %.2f and the precision value is %.2f. The recall is %.2f  and the auc is %.2f" % (accuracy_solid, precision_solid, recall_solid, auc_solid))
+        print("Sub solid texture: The accuracy value is %.2f and the precision value is %.2f. The recall is %.2f  and the auc is %.2f" % (accuracy_sub, precision_sub, recall_sub, auc_sub))
+        print("Non solid texture: The accuracy value is %.2f and the precision value is %.2f. The recall is %.2f  and the auc is %.2f" % (accuracy_non, precision_non, recall_non, auc_non))
    
         
     
@@ -45,27 +45,16 @@ def run_CNN_segmentation_2D(mode = "default"):
             train, test, val, train_Y_one_hot, test_Y_one_hot, val_Y_one_hot=prepare_CNN(train_x, train_masks, train_y, test_slices, test_slices_masks, y_test, val_x, val_masks, val_y)
             predicted_classes, predicted_classes_val, fashion_train=train_model(train, test, val, train_Y_one_hot, test_Y_one_hot, val_Y_one_hot)
         
-            show_loss_accuracy(fashion_train)
+            show_loss(fashion_train)
             solid_pred, sub_solid_pred, non_solid_pred = separateClasses(predicted_classes)
             solid_label, sub_solid_label, non_solid_label = separateClasses(y_test)
-            
-            dice_solid, jaccard_solid, _, accuracy_solid = getPerformanceMetrics(solid_pred, solid_label)
-            dice_sub_solid, jaccard_sub_solid, _, accuracy_sub_solid = getPerformanceMetrics(sub_solid_pred, sub_solid_label)
-            dice_non_solid, jaccard_non_solid, _, accuracy_non_solid = getPerformanceMetrics(non_solid_pred, non_solid_label)
-            print("Solid texture - test: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice_solid, jaccard_solid, accuracy_solid))
-            print("Sub solid texture - test: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice_sub_solid, jaccard_sub_solid, accuracy_sub_solid))
-            print("Non solid texture - test: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice_non_solid, jaccard_non_solid, accuracy_non_solid))
-   
-
-            solid_pred, sub_solid_pred, non_solid_pred = separateClasses(predicted_classes_val)
-            solid_label, sub_solid_label, non_solid_label = separateClasses(val_y)
-            
-            dice_solid, jaccard_solid, _, accuracy_solid = getPerformanceMetrics(solid_pred, solid_label)
-            dice_sub_solid, jaccard_sub_solid, _, accuracy_sub_solid = getPerformanceMetrics(sub_solid_pred, sub_solid_label)
-            dice_non_solid, jaccard_non_solid, _, accuracy_non_solid = getPerformanceMetrics(non_solid_pred, non_solid_label)
-            print("Solid texture - Validation: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice_solid, jaccard_solid, accuracy_solid))
-            print("Sub solid texture - Validation: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice_sub_solid, jaccard_sub_solid, accuracy_sub_solid))
-            print("Non solid texture - Validation: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice_non_solid, jaccard_non_solid, accuracy_non_solid))
+              
+            accuracy_solid, precision_solid, recall_solid, auc_solid = getPerformanceMetrics(solid_pred, solid_label)
+            accuracy_sub, precision_sub, recall_sub, auc_sub = getPerformanceMetrics(sub_solid_pred, sub_solid_label)
+            accuracy_non, precision_non, recall_non, auc_non = getPerformanceMetrics(non_solid_pred, non_solid_label)
+            print("Solid texture: The accuracy value is %.2f and the precision value is %.2f. The recall is %.2f  and the auc is %.2f" % (accuracy_solid, precision_solid, recall_solid, auc_solid))
+            print("Sub solid texture: The accuracy value is %.2f and the precision value is %.2f. The recall is %.2f  and the auc is %.2f" % (accuracy_sub, precision_sub, recall_sub, auc_sub))
+            print("Non solid texture: The accuracy value is %.2f and the precision value is %.2f. The recall is %.2f  and the auc is %.2f" % (accuracy_non, precision_non, recall_non, auc_non))
    
 #%%
 """
@@ -185,7 +174,7 @@ Arguments: fashion_train - model trained
 Returns:
     *void
 """
-def show_loss_accuracy(fashion_train):
+def show_loss(fashion_train):
     # Show
     loss = fashion_train.history['loss']
     val_loss = fashion_train.history['val_loss']
@@ -224,21 +213,24 @@ def confusionMatrix(predictions, labels):
                 
     return np.asarray([[true_positives, false_negatives], [false_positives, true_negatives]]) 
     
-def getPerformanceMetrics(predictions_outer_lung, labels_outer_lung):
-    c_matrix_outer_lung = confusionMatrix(predictions_outer_lung, labels_outer_lung)
+def getPerformanceMetrics(predictions, labels):
+    c_matrix = confusionMatrix(predictions, labels)
     
-    true_positives = c_matrix_outer_lung[0,0]
-    false_negatives = c_matrix_outer_lung[0,1]
-    false_positives = c_matrix_outer_lung[1,0]
-    true_negatives = c_matrix_outer_lung[1,1]
+    true_positives = c_matrix[0,0]
+    false_negatives = c_matrix[0,1]
+    false_positives = c_matrix[1,0]
+    true_negatives = c_matrix[1,1]
 
     accuracy = (true_positives + true_negatives)/(true_positives + true_negatives + false_positives + false_negatives)
+    precision = (true_positives)/(true_positives + false_positives + 10**-12)
     
-    dice = (2*true_positives/(false_positives+false_negatives+(2*true_positives)))
-    jaccard = (true_positives)/(true_positives+false_positives+false_negatives)
-    matrix = np.asarray([[true_positives, false_negatives], [false_positives, true_negatives]])
+    recall = (true_positives)/(true_positives + false_negatives)
+    #matrix = np.asarray([[true_positives, false_negatives], [false_positives, true_negatives]])
     
-    return dice, jaccard, matrix, accuracy 
+    fp_rate, tp_rate, thresholds = metrics.roc_curve(labels, predictions, pos_label = 1)
+    auc = metrics.auc(fp_rate, tp_rate)
+    
+    return accuracy, precision, recall, auc
 
 def separateClasses(predict):
     solid =[] # label 2

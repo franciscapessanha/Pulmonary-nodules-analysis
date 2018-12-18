@@ -203,7 +203,9 @@ def getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, t
     val_x = (val_x - mean_int)/std_int
     test_x = (test_x - mean_int)/std_int
     
+    print("1. Intensity features")
     train_int, val_int, test_int, train_circ, val_circ, test_circ = getIntensityFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks)
+    print("2. Texture features")
     train_gabor, val_gabor, test_gabor,train_lbp, val_lbp, test_lbp = getTextureFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks)
     
     

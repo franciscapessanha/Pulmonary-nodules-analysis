@@ -15,7 +15,6 @@ from keras.layers.pooling import MaxPooling3D, GlobalMaxPool3D
 from keras.layers.merge import concatenate
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from keras.optimizers import Adam
-from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
 #import keras
 
 import cv2
@@ -24,30 +23,17 @@ import cv2
 #%%
 
 
-def run_segmentation_CNN(mode = "default"):
-    if mode == "default": 
-        train_slices, train_slices_masks, _, val_slices, val_slices_masks, _, test_slices, test_slices_masks, _ = getData()
-            
-        train, test, val, trainMasks, testMasks, valMasks=prepare_CNN(train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks)
-        results, accuracy, dice, jaccard, preds_test_nodules, accuracy_val, dice_val, jaccard_val, preds_val_nodules=train_model(train, test, val, trainMasks, testMasks, valMasks)
-        show_loss_accuracy(results)
-        print("Test set: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice, jaccard, accuracy))
-        print("validation set: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice_val, jaccard_val, accuracy_val))
+def run_segmentation_CNN():
+ 
+    train_volumes, train_volumes_masks, _, val_volumes, val_volumes_masks, _, test_volumes, test_volumes_masks, _ = getData(type_ = "volume")
         
+    train, test, val, trainMasks, testMasks, valMasks=prepare_CNN(train_volumes, train_volumes_masks, val_volumes, val_volumes_masks, test_volumes, test_volumes_masks)
+    results, accuracy, dice, jaccard, preds_test_nodules, accuracy_val, dice_val, jaccard_val, preds_val_nodules=train_model(train, test, val, trainMasks, testMasks, valMasks)
+    plot_loss(results)
+    print("Test set: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice, jaccard, accuracy))
+    print("validation set: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice_val, jaccard_val, accuracy_val))
     
-    if mode == "cross_val": 
-        train_slices, train_slices_masks, _, val_slices, val_slices_masks, _, test_slices, test_slices_masks, _ = getData(mode="cross_val")
-        
-        for train_x, train_masks, val_x, val_masks in zip(train_slices, train_slices_masks, val_slices, val_slices_masks):
-            
-            train, test, val, trainMasks, testMasks, valMasks=prepare_CNN(train_x, train_masks, val_x, val_masks, test_slices, test_slices_masks)
-            results, accuracy, dice, jaccard, preds_test_nodules, accuracy_val, dice_val, jaccard_val, preds_val_nodules=train_model(train, test, val, trainMasks, testMasks, valMasks)
-            plot_loss(results)
-            print("Test set: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice, jaccard, accuracy))
-            print("validation set: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice_val, jaccard_val, accuracy_val))
-
-    
-
+ 
 #%%
     """
 prepare_CNN
@@ -56,70 +42,70 @@ prepares the input for the model of the CNN
 
 Arguments:
     
-Returns:train_slices, test_slices, val_slices - images of train, test and validation sets after aplying lung mask, normalization and 
+Returns:train_volumes, test_volumes, val_volumes - images of train, test and validation sets after aplying lung mask, normalization and 
 reshaped for input on the CNN
-     train_slices_masks, test_slices_masks, val_slices_masks  - classes in the format of one-hot-vector (1,0,0)
+     train_volumes_masks, test_volumes_masks, val_volumes_masks  - classes in the format of one-hot-vector (1,0,0)
 """
 
-def prepare_CNN(train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks):
+def prepare_CNN(train_volumes, train_volumes_masks, val_volumes, val_volumes_masks, test_volumes, test_volumes_masks):
     
     #Aplly lung mask
-    for i in range(len(train_slices)):
-        chull=getLungMask(train_slices[i])
-        train_slices[i][chull == 0] = 0
-    for i in range(len(val_slices)):
-        chull=getLungMask(val_slices[i])
-        val_slices[i][chull == 0] = 0
-    for i in range(len(test_slices)):
-        chull=getLungMask(test_slices[i])
-        test_slices[i][chull == 0] = 0
+    for i in range(len(train_volumes)):
+        chull=getLungMask(train_volumes[i])
+        train_volumes[i][chull == 0] = 0
+    for i in range(len(val_volumes)):
+        chull=getLungMask(val_volumes[i])
+        val_volumes[i][chull == 0] = 0
+    for i in range(len(test_volumes)):
+        chull=getLungMask(test_volumes[i])
+        test_volumes[i][chull == 0] = 0
         
         
 
-    mean_int=np.mean(train_slices)
-    std_int=np.std(train_slices)
+    mean_int=np.mean(train_volumes)
+    std_int=np.std(train_volumes)
     
-    train_slices = (train_slices - mean_int)/std_int
-    val_slices = (val_slices - mean_int)/std_int
-    test_slices = (test_slices - mean_int)/std_int
+    train_volumes = (train_volumes - mean_int)/std_int
+    val_volumes = (val_volumes - mean_int)/std_int
+    test_volumes = (test_volumes - mean_int)/std_int
     
     
     #reshape to a multiple of 16 to better applye the U-net CNN - padding from 51 to 64
-    train_slices= [cv2.copyMakeBorder(train_slices[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(train_slices))]
-    val_slices= [cv2.copyMakeBorder(val_slices[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(val_slices))]
-    test_slices= [cv2.copyMakeBorder(test_slices[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(test_slices))]
-    train_slices_masks= [cv2.copyMakeBorder(train_slices_masks[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(train_slices_masks))]
-    val_slices_masks= [cv2.copyMakeBorder(val_slices_masks[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(val_slices_masks))]
+    train_volumes= [cv2.copyMakeBorder(train_volumes[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(train_volumes))]
+    val_volumes= [cv2.copyMakeBorder(val_volumes[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(val_volumes))]
+    test_volumes= [cv2.copyMakeBorder(test_volumes[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(test_volumes))]
+    train_volumes_masks= [cv2.copyMakeBorder(train_volumes_masks[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(train_volumes_masks))]
+    val_volumes_masks= [cv2.copyMakeBorder(val_volumes_masks[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(val_volumes_masks))]
 
 
-    train_slices_masks = np.asarray(train_slices_masks)
-    test_slices_masks = np.asarray(test_slices_masks)
-    val_slices_masks = np.asarray(val_slices_masks)
+    train_volumes_masks = np.asarray(train_volumes_masks)
+    test_volumes_masks = np.asarray(test_volumes_masks)
+    val_volumes_masks = np.asarray(val_volumes_masks)
     
-    train_slices = np.asarray(train_slices)
-    test_slices = np.asarray(test_slices)
-    val_slices = np.asarray(val_slices)
+    train_volumes = np.asarray(train_volumes)
+    test_volumes = np.asarray(test_volumes)
+    val_volumes = np.asarray(val_volumes)
     
-    train_slices_masks = train_slices_masks.astype('float32')
-    test_slices_masks = test_slices_masks.astype('float32')
-    val_slices_masks = val_slices_masks.astype('float32')
+    train_volumes_masks = train_volumes_masks.astype('float32')
+    test_volumes_masks = test_volumes_masks.astype('float32')
+    val_volumes_masks = val_volumes_masks.astype('float32')
    
-    train_slices = train_slices.astype('float32')
-    test_slices = test_slices.astype('float32')
-    val_slices = val_slices.astype('float32')
+    train_volumes = train_volumes.astype('float32')
+    test_volumes = test_volumes.astype('float32')
+    val_volumes = val_volumes.astype('float32')
    
-    train_slices = train_slices.reshape(-1,64,64,1)
-    test_slices = test_slices.reshape(-1,64,64,1)
-    val_slices = val_slices.reshape(-1, 64,64, 1)
+    train_volumes = train_volumes.reshape(-1,64,64,1)
+    test_volumes = test_volumes.reshape(-1,64,64,1)
+    val_volumes = val_volumes.reshape(-1, 64,64, 1)
     
-    train_slices_masks = train_slices_masks.reshape(-1,64,64,1)
+    train_volumes_masks = train_volumes_masks.reshape(-1,64,64,1)
     
-    val_slices_masks = val_slices_masks.reshape(-1, 64,64, 1)
+    val_volumes_masks = val_volumes_masks.reshape(-1, 64,64, 1)
     
    
     
 
-    return train_slices, test_slices, val_slices, train_slices_masks, test_slices_masks, val_slices_masks
+    return train_volumes, test_volumes, val_volumes, train_volumes_masks, test_volumes_masks, val_volumes_masks
 
 #%%
 
@@ -226,12 +212,12 @@ Returns:
     preds_test_nodules - predicted nodules on test set
 """
 
-def train_model(train_slices, test_slices, val_slices, train_slices_masks, test_slices_masks, val_slices_masks):
+def train_model(train_volumes, test_volumes, val_volumes, train_volumes_masks, test_volumes_masks, val_volumes_masks):
     # define parameters
     im_width = 64
     im_height = 64
     epochs=100
-    batch=len(train_slices)
+    batch=len(train_volumes)
     
     input_img = Input((im_height, im_width, 1), name='img')
     model = get_unet(input_img, n_filters=3, dropout=0.05, batchnorm=True)
@@ -246,7 +232,7 @@ def train_model(train_slices, test_slices, val_slices, train_slices_masks, test_
         ModelCheckpoint('model3dsegmentação.h5', verbose=1, save_best_only=True, save_weights_only=True)
     ]
     
-    results = model.fit(train_slices, train_slices_masks, batch_size=batch,steps_per_epoch=10, epochs=epochs, callback=callbacks, verbose=0, validation_data=(val_slices, val_slices_masks))
+    results = model.fit(train_volumes, train_volumes_masks, batch_size=batch,steps_per_epoch=10, epochs=epochs, callback=callbacks, verbose=0, validation_data=(val_volumes, val_volumes_masks))
     
     model.load_weights('model3dsegmentação.h5')
     
@@ -254,14 +240,14 @@ def train_model(train_slices, test_slices, val_slices, train_slices_masks, test_
     treshold=(0.35,0.4, 0.45, 0.5,0.55,0.6,0.65,0.7,0.75)
     maximo=0
     # Predict for test with treshold
-    preds_train = model.predict(train_slices, verbose=0)
+    preds_train = model.predict(train_volumes, verbose=0)
     for tresh in treshold:
         
         preds_train_nodules = (preds_train >tresh).astype(np.uint8)
         
         preds_train_nodules=preds_train_nodules.reshape(-1,64,64)
-        train_slices_masks=train_slices_masks.reshape(-1,64,64)
-        _, dice, jaccard = confusionMatrix(np.hstack(np.hstack(preds_train_nodules)), np.hstack(np.hstack(train_slices_masks)))
+        train_volumes_masks=train_volumes_masks.reshape(-1,64,64)
+        _, dice, jaccard = confusionMatrix(np.hstack(np.hstack(preds_train_nodules)), np.hstack(np.hstack(train_volumes_masks)))
         
         metrics=dice+jaccard  # the best result will dictate which is the bst treshold
         
@@ -270,21 +256,21 @@ def train_model(train_slices, test_slices, val_slices, train_slices_masks, test_
             best_treshold=tresh
             
     # Predict for test with treshold already defined by training set
-    preds_val = model.predict(val_slices, verbose=0)
+    preds_val = model.predict(val_volumes, verbose=0)
     preds_val_nodules = (preds_val >best_treshold).astype(np.uint8)
     
-    val_slices_masks=val_slices_masks.reshape(-1,64,64)
+    val_volumes_masks=val_volumes_masks.reshape(-1,64,64)
     preds_val_nodules=preds_val_nodules.reshape(-1,64,64)
     
     
-    accuracy_val, dice_val, jaccard_val = confusionMatrix(np.hstack(np.hstack(preds_val_nodules)), np.hstack(np.hstack(val_slices_masks)))
+    accuracy_val, dice_val, jaccard_val = confusionMatrix(np.hstack(np.hstack(preds_val_nodules)), np.hstack(np.hstack(val_volumes_masks)))
 
     # Predict for test with treshold already defined by training set
-    preds_test = model.predict(test_slices, verbose=0)
+    preds_test = model.predict(test_volumes, verbose=0)
     preds_test_nodules = (preds_test >best_treshold).astype(np.uint8)
     
     preds_test_nodules=preds_test_nodules.reshape(-1,64,64)
-    #test_slices_masks=test_slices_masks.reshape(-1,51,51)
+    #test_volumes_masks=test_volumes_masks.reshape(-1,51,51)
     
     #cut the border previously used to match the ground truth
     border_size_top_right=6
@@ -295,12 +281,18 @@ def train_model(train_slices, test_slices, val_slices, train_slices_masks, test_
     preds_test_nodules=closing(preds_test_nodules)
     
     
-    accuracy, dice, jaccard = confusionMatrix(np.hstack(np.hstack(preds_test_nodules)), np.hstack(np.hstack(test_slices_masks)))
+    accuracy, dice, jaccard = confusionMatrix(np.hstack(np.hstack(preds_test_nodules)), np.hstack(np.hstack(test_volumes_masks)))
 
     return results, accuracy, dice, jaccard, preds_test_nodules, accuracy_val, dice_val, jaccard_val, preds_val_nodules
 
 
 #%%
+"""
+closing- morpological closing operation
+=================================================
+Arguments: image array
+return: image array after closing
+"""
 def closing(preds_image):
     new_preds=[]
     for i in range(len(preds_image)):
