@@ -11,10 +11,29 @@ from show_images import showImages
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn import metrics
 
+
 """
 Run
-===============================================================================
-""" 
+==============
+
+Allows to run the code for 2D texture, choosing default or cross-validation mode. 
+
+Arguments:
+    * mode: default or cross-validation
+    
+Return:
+    * int_metrics: intensity metrics for SVM
+    * circ_metrics: circularity metrics for SVM
+    * lbp_metrics: LBP metrics for SVM
+    * gb_metrics: Gabor Filter metrics for SVM
+    * all_metrics: concatenate metrics of all features for SVM
+    * int_kNN_metrics: intensity metrics for kNN
+    * circ_kNN_metrics: circularity metrics for kNN
+    * lbp_kNN_metrics: LBP metrics for kNN
+    * gb_kNN_metrics: Gabor Filter metrics for kNN 
+    * all_kNN_metrics: concatenate metrics of all features for kNN
+"""
+
 def run(mode = "default"):
     if mode == "default": 
         train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, test_masks, test_y = getData()
@@ -90,6 +109,23 @@ def run(mode = "default"):
         
         return int_metrics, circ_metrics, lbp_metrics, gb_metrics, all_metrics, int_kNN_metrics, circ_kNN_metrics, lbp_kNN_metrics, gb_kNN_metrics, all_kNN_metrics
 
+"""
+Cross-Validation Results
+==============
+
+Prints the results for the cross-validation metrics.
+
+Arguments:
+    * int_metrics: intensity metrics for a classifier
+    * circ_metris: circularity metrics for a classifier
+    * lpb_metrics: LBP metrics for a classifier
+    * gb_metrics: Gabor Filters metrics for a classifier
+    * all_metrics: concatenate metrics for a classifier
+    
+Return: void
+    
+"""
+
 def showResultsCrossVal(int_metrics, circ_metrics, lbp_metrics,gb_metrics, all_metrics):
     print("\nIntensity Features only \n=======================")
     performaceCrossVal(int_metrics)
@@ -101,6 +137,19 @@ def showResultsCrossVal(int_metrics, circ_metrics, lbp_metrics,gb_metrics, all_m
     performaceCrossVal(gb_metrics)
     print("\nAll Features\n=======================")
     performaceCrossVal(all_metrics)
+    
+    
+"""
+Cross-Validation Performance
+============================
+
+Arguments:
+    * metrics: 
+    
+Return: void
+    
+""" 
+   
     
 def performaceCrossVal(metrics):
     metrics = np.vstack(metrics)
@@ -118,6 +167,17 @@ def performaceCrossVal(metrics):
 """
 Normalize data
 ===============================================================================
+
+Normalization of the input data. 
+
+Arguments:
+    * train_slices: images related to a set of images
+    * train_slices_masks: masks related to a set of images
+    
+Return:
+    * mean_int: mean of all pixels of the nodules 
+    * std_int: standard deviation of all pixels of the nodules 
+
 """  
 def normalizeData(train_slices, train_slices_masks):
     all_px = []
@@ -130,8 +190,20 @@ def normalizeData(train_slices, train_slices_masks):
     return mean_int, std_int
  
 """
-Get Prediction
+Get Prediction SVM
 ===============================================================================
+
+Train the model using the SVM classifier and predict.  
+
+Arguments:
+    * train_features: features related to the train set
+    * train_y: labels of the training set
+    * features: features of test or validation set
+    * labels: labels of the test or validation set
+        
+Return:
+    * predictSVM: prediction of the model 
+    
 """
 def getPredictionSVM(train_features, train_y, features, labels):
     modelSVM = SVC(kernel = 'linear', gamma = 'auto', decision_function_shape= 'ovo',class_weight='balanced')
@@ -140,6 +212,22 @@ def getPredictionSVM(train_features, train_y, features, labels):
 
     return predictSVM
 
+"""
+Get Prediction kNN
+===============================================================================
+
+Train the model using the kNN classifier and predict.  
+
+Arguments:
+    * train_features: features related to the train set
+    * train_y: labels of the training set
+    * features: features of test or validation set
+    * labels: labels of the test or validation set
+        
+Return:
+    * predictkNN: prediction of the model 
+    
+"""
 def getPredictionKNN(train_features, train_y, features, labels):
     modelKNN = KNeighborsClassifier(n_neighbors=11)
     modelKNN.fit(train_features, train_y)
@@ -147,6 +235,23 @@ def getPredictionKNN(train_features, train_y, features, labels):
 
     return predictKNN
 
+"""
+Confusion Matrix
+===============================================================================
+
+Calculates the confusion matrix given a prediction and a label
+
+Arguments:
+    * predictions: results obtained from the classifier
+    * labels: ground truth of the classification
+        
+Return:
+    * true_positives
+    * false_negatives
+    * false_positives
+    * true_negatives
+    
+"""
 
 def confusionMatrix(predictions, labels):
     true_positives = 0
@@ -168,6 +273,25 @@ def confusionMatrix(predictions, labels):
                 
     return np.asarray([[true_positives, false_negatives], [false_positives, true_negatives]]) 
     
+
+"""
+getPerformanceMetrics
+=========================
+
+Calculates accuracy, precision, recall, auc for evaluation given an array of predictions and the corresponding ground truth
+
+Arguments: 
+    * predictions- array with predicted results
+    * labels-  corresponding ground true
+
+Return: 
+    * accuracy 
+    * precision 
+    * recall 
+    * auc 
+"""
+
+
 def getPerformanceMetrics(predictions, labels):
     c_matrix = confusionMatrix(predictions, labels)
     
@@ -186,6 +310,18 @@ def getPerformanceMetrics(predictions, labels):
     auc = metrics.auc(fp_rate, tp_rate)
     
     return accuracy, precision, recall, auc
+
+"""
+separateClasses 
+============================
+Separates classes in 3 vector, one for each classes, where the 1's correspondes to the predicted true results and 0's to false predicted results                    
+
+Arguments: 
+        * predictSVM: array with multiple classes 
+
+Returns: 
+        * solid, sub_solid, non_solid - binary vectors of each class
+"""
 
 def separateClasses(predictSVM):
     solid =[] # label 2
@@ -209,6 +345,24 @@ def separateClasses(predictSVM):
             
     return solid, sub_solid, non_solid
 
+"""
+Texture Metrics
+===============================================================================
+
+Train the model using the SVM classifier and predict.  
+
+Arguments:
+    * prediction: results obtained from the classifier
+    * val_y: ground truth of the classification
+        
+Return:
+    * true_positives
+    * false_negatives
+    * false_positives
+    * true_negatives
+    
+"""
+
 def textureMetrics(prediction, val_y):
     solid_pred, sub_solid_pred, non_solid_pred = separateClasses(prediction)
     solid_label, sub_solid_label, non_solid_label = separateClasses(val_y)
@@ -225,6 +379,29 @@ def textureMetrics(prediction, val_y):
 """
 Get Texture
 ===============================================================================
+
+Train the model using the SVM classifier and predict.  
+
+Arguments:
+    * train_x: training set
+    * train_masks: ground truth of the training set
+    * train_y: labels of the training set
+    * val_x: validation or test set
+    * val_masks: ground truth of the validation or test set
+    * val_y: labels of the validation or test set
+        
+Return:
+    * int_metrics: intensity metrics for SVM
+    * circ_metrics: circularity metrics for SVM
+    * lbp_metrics: LBP metrics for SVM
+    * gb_metrics: Gabor Filter metrics for SVM
+    * all_metrics: concatenate metrics of all features for SVM
+    * int_kNN_metrics: intensity metrics for kNN
+    * circ_kNN_metrics: circularity metrics for kNN
+    * lbp_kNN_metrics: LBP metrics for kNN
+    * gb_kNN_metrics: Gabor Filter metrics for kNN 
+    * all_kNN_metrics: concatenate metrics of all features for kNN
+
 """  
            
 def getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y):
