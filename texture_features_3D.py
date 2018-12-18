@@ -1,10 +1,29 @@
 import numpy as np
-from skimage.feature import local_binary_pattern, greycomatrix, greycoprops
-from skimage.filters import gabor, gabor_kernel
 import cv2 as cv
+from skimage.feature import local_binary_pattern
+from skimage.filters import gabor
 """
 Texture Features
 ==============================================================================
+
+Extract Gabor Filter and LBP
+
+Arguments:
+    * train_x: training set
+    * train_masks: ground truth for training set
+    * val_x: validation set
+    * val_masks: ground truth for validation set
+    * test_x: test set
+    * test_masks: ground truth for test set
+    
+Return:
+    * train_gabor: gabor filter results for training set
+    * val_gabor: gabor filter results for validation set
+    * test_gabor: gabor filter results for test set
+    * train_lbp: LBP results for training set
+    * val_lbp: LBP results for validation set
+    * test_lbp: LBP results for test set
+
 """
 
 def getTextureFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks):
@@ -13,9 +32,23 @@ def getTextureFeatures(train_x, train_masks, val_x, val_masks, test_x, test_mask
     
 
     return train_gabor, val_gabor, test_gabor,train_lbp, val_lbp, test_lbp
+
 """
-LBP Features
+LBP Calculation 
 ==============================================================================
+
+Extract Gabor Filter and LBP
+
+Arguments:
+    * nodules: input nodules
+    * masks: input masks
+    * n_points: number of points
+    * radius
+    
+Return:
+    * all_lbp: all lbp pixeis
+    * metrics_lbp: lbp metrics
+
 """
 
 def calcLBP(nodules, masks, n_points, radius):
@@ -33,6 +66,31 @@ def calcLBP(nodules, masks, n_points, radius):
         all_lbp.append(sample_lbp)
     return all_lbp, metrics_lbp
 
+"""
+Get LBP Features
+==============================================================================
+
+Uses the LBP calculating function to extract the values for LBP and the metrics
+
+Arguments:
+    * train_x
+    * train_masks
+    * val_x
+    * val_masks
+    * test_x
+    * test_masks
+    * radius
+    * n_points
+    
+Return:
+    * train_metrics: metrics for the training set
+    * val_metrics: metrics for the validation set
+    * test_matrics: metrics for the test set
+
+"""
+
+
+
 def getLBPFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks, radius = 1,n_points = 8):
     train_lbp, train_metrics = calcLBP(train_x, train_masks, n_points, radius)
     val_lbp, val_metrics = calcLBP(val_x, val_masks, n_points, radius)
@@ -44,7 +102,19 @@ def getLBPFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks, r
 """
 Gabor Filter (frequency and orientation) Features
 ===============================================================================
+
+Use Gabor Filters as features to train the model in order to find frequency and orientation.
+
+Arguments:
+    * nodules
+    * masks
+    
+Return:
+    * filtered_ims: all gabor filters in a array
+    * slices_per_nodule
+
 """
+
 def calculateGaborFilters(nodules, masks):
     filtered_ims = []
     slices_per_nodule = []
@@ -62,10 +132,22 @@ def calculateGaborFilters(nodules, masks):
         slices_per_nodule.append(n_slices)
     return filtered_ims,slices_per_nodule
 
+"""
+Reshape Gabor
+===============================================================================
+
+Arguments:
+    * filtered_ims
+    * masks
+    
+Return:
+    * gabor_results: results of the Gabor Filters
+
+"""
+
 def reshapeGabor(filtered_ims, nodules, slices_per_nodule):
     gabor_results=[]
 
-    
     for j in range(len(nodules)):
         n_slices = slices_per_nodule[j]
         first = int(np.sum(slices_per_nodule[0:j]) * 36)
@@ -82,6 +164,26 @@ def reshapeGabor(filtered_ims, nodules, slices_per_nodule):
         gabor_results.append(nodule_metrics)
          
     return gabor_results
+
+"""
+Get Gabor Filter
+===============================================================================
+
+Arguments:
+    * train_x
+    * train_masks
+    * val_x
+    * val_masks
+    * test_x
+    * test_masks
+    
+Return:
+    * train_gabor_features: gabor features to train the model 
+    * val_gabor_features: gabor features for the validation set
+    * test_gabor_features: gabor features for the test
+
+"""
+
 
 def getGaborFilter(train_x, train_masks, val_x, val_masks, test_x, test_masks):
     filtered_ims_train, slices_per_nodule_train = calculateGaborFilters(train_x, train_masks)
