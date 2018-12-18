@@ -12,7 +12,15 @@ from sklearn.neighbors import KNeighborsClassifier
 """
 Run
 ===============================================================================
+Allows to run the code for 2D segmentation, choosing default or cross-validation mode. 
+
+Arguments:
+    * mode: default or cross-validation
+    
+Return:
+    * void
 """
+
 
 def run(mode = "default"):
     if mode == "default": 
@@ -28,6 +36,20 @@ def run(mode = "default"):
 """
 Get 2D Segmentation
 ===============================================================================
+
+Gets images, labels, mean and standard deviation from the training set and the validation/test set. Fits models (SVM and kNN) with training set and predicts the labels for new sets..
+
+Arguments:
+    * train_x: train set
+    * train_masks: train masks set (ground truth)
+    * val_x: validation set
+    * val_masks: validation masks set (ground truth)
+    * test_x: test set
+    * test_masks: test masks set (ground truth)
+    
+Return:
+    * void
+
 """
 def get2DSegmentation(train_x, train_masks, val_x, val_masks, test_x, test_masks):
     print("SVM val \n=======")
@@ -84,6 +106,17 @@ def get2DSegmentation(train_x, train_masks, val_x, val_masks, test_x, test_masks
 """
 Show results
 ===============================================================================
+Prints the original nodule image, the corresponding ground truth image and the prediction obtained previously
+
+Arguments:
+    * prediction_lung: segmented nodule
+    * sample: original nodule image 
+    * mask: ground truth
+
+    
+Return:
+    * nodule segmention result
+
  """          
 def showResults(prediction_lung, sample, mask):
     result = np.zeros(np.shape(sample), np.uint8)
@@ -237,6 +270,19 @@ def normalizeImages(train_images):
 """
 Get Training Set
 ==============================================================================
+Normalizes the training set, applies gaussian filters, calculates the nodules eigenvalues and SI, CV and Vmed 
+Concatenates all features
+
+Arguments:
+    * train_slices: images from the training set
+    * train_slices_masks: masks (ground truth images) from the training set
+    * number_of_pixel: number of pixels that we want to get from the mask 
+    
+Returns:
+    * points: nodules pixels from training set
+    * labels: pixels labels from training set
+    * mean_int: mean from the normalized training set images 
+    * std_int: standard deviation from the normalized training set images
 """
 
 def getTrainingSet(train_slices, train_slices_masks, number_of_pixel):
@@ -268,6 +314,19 @@ def getTrainingSet(train_slices, train_slices_masks, number_of_pixel):
 """
 Get Input Set
 ==============================================================================
+Normalizes the validation or test set, applies gaussian filters, calculates the nodules eigenvalues and SI, CV and Vmed 
+Concatenates all features
+
+Arguments:
+    * nodules: images from the input set (validation or test set)
+    * masks: masks (ground truth images) from the input set (validation or test set)
+    * mean_int: mean from the normalized training set images 
+    * std_int: standard deviation from the normalized training set images
+    
+Returns:
+    * input_set: pixels nodules, si, cv and vmed values per pixel
+    * mask_px: mask that results from the application of the lung mask
+
 """
 def getInputSet(nodules, masks,mean_int, std_int):
     norm_nodules = [(nodule - mean_int)/std_int for nodule in nodules]
@@ -311,7 +370,15 @@ def getInputSet(nodules, masks,mean_int, std_int):
 """
 Outer Lung Prediction
 ==============================================================================
-"""   
+Arguments:
+    * nodules: nodules images
+    * masks: masks (ground truth images) 
+
+Returns:
+    * predictions_outer_lung
+    * labels_outer_lung
+"""
+
 def outerLungPrediction(nodules, masks):
     labels_outer_lung = []
     predictions_outer_lung = []
@@ -326,7 +393,19 @@ def outerLungPrediction(nodules, masks):
 """
 Confusion Matrix
 ==============================================================================
-"""   
+Calculates the confusion matrix given a prediction and a label
+
+Arguments:
+    * predictions: results obtained from the classifier
+    * labels: ground truth of the classification
+        
+Return:
+    * true_positives
+    * false_negatives
+    * false_positives
+    * true_negatives
+    
+""" 
 def confusionMatrix(predictions, labels):
     true_positives = 0
     false_negatives = 0
@@ -350,7 +429,19 @@ def confusionMatrix(predictions, labels):
 """
 Get Performance Metrics
 ==============================================================================
-""" 
+
+Calculates accuracy, precision, recall, auc for evaluation given an array of predictions and the corresponding ground truth
+
+Arguments: 
+    * predictions- array with predicted results
+    * labels-  corresponding ground true
+
+Return: 
+    * accuracy 
+    * precision 
+    * recall 
+    * auc 
+"""
 def getPerformanceMetrics(predictions_lung, labels_lung, predictions_outer_lung, labels_outer_lung):
     c_matrix_lung = confusionMatrix(predictions_lung, labels_lung)
     c_matrix_outer_lung = confusionMatrix(predictions_outer_lung, labels_outer_lung)
