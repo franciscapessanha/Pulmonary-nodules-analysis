@@ -4,6 +4,31 @@ import cv2 as cv
 from skimage.measure import label, regionprops
 from scipy.spatial import distance
 
+"""
+Get Intensity Features
+==============
+
+Calculates the intensity and circularity features.
+
+Arguments:
+    * train_slices
+    * train_slices_masks
+    * val_slices
+    * val_slices_masks
+    * test_slices
+    * test_slices_masks
+    
+Return:
+    * train_int: intensity for the training set
+    * val_int: intensity for the validation or test set
+    * test_int: intensity for the test set
+    * train_circ: circularty for the training set
+    * val_circ: circularty for the validation set
+    * test_circ: circularty for the test set
+
+"""
+
+
 def getIntensityFeatures(train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks):
     train_int = np.vstack(calcIntensityFeatures(train_slices, train_slices_masks))
     val_int = np.vstack(calcIntensityFeatures(val_slices, val_slices_masks))
@@ -14,6 +39,21 @@ def getIntensityFeatures(train_slices, train_slices_masks, val_slices, val_slice
     test_circ = np.vstack(calcCircularFeatures(test_slices, test_slices_masks))
     
     return train_int, val_int, test_int, train_circ, val_circ, test_circ
+
+"""
+Calculate Circularity Features
+==============
+
+Calculates the centroid of the circle and creates a circle with different radius in order to avaliate different parameters within the nodule. 
+
+Arguments:
+    * nodules
+    * masks
+    
+Return:
+    * circular_features: mean and standard deviation of the circular features
+
+"""
 
 def calcCircularFeatures(nodules, masks):
     circular_features = []
@@ -58,6 +98,22 @@ def calcCircularFeatures(nodules, masks):
         circular_features.append([mean_0, std_0, mean_1, std_1, mean_2, std_2])
 
     return circular_features
+
+"""
+Calculate Intensity Features
+==============
+
+Calculates the mean, stardard deviation, maximum and minimun of the nodule and creates an intensity array
+
+Arguments:
+    * nodules
+    * masks
+    
+Return:
+    * intensity_features: intensity of the nodule
+
+"""
+
 
 def calcIntensityFeatures(nodules, masks):
     intensity_features = []

@@ -5,10 +5,18 @@ from skimage.feature import hessian_matrix, hessian_matrix_eigvals
 from get_data import getData
 
 
+"""
+Gaussian Smooth
+================================================================
+Multiscale Gaussian smoothing using sigm in the range 0.5 to 3.5
 
-# Multiscale Gaussian smoothing using sigm in the range 0.5 to 3.5
-# ====================================================================
+Arguments:
+    * nodules
+    
+Return:
+    * smooth_nodules
 
+"""
 def gaussianSmooth(nodules):
     sigma = [0.5, 1, 1.5, 2, 2.5, 3, 3.5]
     smooth_nodules = []
@@ -22,7 +30,28 @@ def gaussianSmooth(nodules):
     
     return smooth_nodules
 
-# 2. Compute the Hessian matrix and eig values
+"""
+2. Compute the Hessian matrix and eig values
+============================================
+Hessian matrix:
+    
+Describes the 2nd order local image intensity variations around the selected 
+voxel. For the obtained Hessian matrix, eigenvector decomposition extracts an 
+orthonormal coordinate system that is aligned with the second order structure 
+of the image. Having the eigenvalues and knowing the (assumed) model of the 
+structure to be detected and the resulting theoretical behavior of the eigenvalues, 
+the decision can be made if the analyzed voxel belongs to the structure being searched.
+
+Eigen values:
+
+Eigenvalues give information about a matrix; the Hessian matrix contains geometric 
+information about thesurface z = f(x, y). We’re going to use the eigenvalues of 
+the Hessian matrix to get geometric information about the surface   
+
+The eigenvalues of the Hessian matrix, in decreasing order. The eigenvalues are 
+the leading dimension. That is, eigs[i, j, k] contains the ith-largest eigenvalue 
+at position (j, k).
+"""
 
 def getEig(image):
     [gx, gy, gz] = np.gradient(image)
@@ -68,16 +97,22 @@ def getEigNodules(smooth_nodules):
   
     return eig_nodules
 
-# 3.1 Shape index 
-# ===============
-    
 """
+3.1 Shape index 
+===============
+    
 The shape index, as defined by Koenderink & van Doorn [1], is a single valued
 measure of local curvature, assuming the image as a 3D plane with intensities 
 representing heights.
 It is derived from the eigen values of the Hessian, and its value ranges from 
 -1 to 1 (and is undefined (=NaN) in flat regions), with following ranges 
 representing following shapes
+
+Arguments:
+    * eig_nodules: eigenvalues of the nodules
+    
+Return:
+    * smooth_nodules: smooth pixel values of the nodules
 """
 def plotImage(image):
     plot_args={}
@@ -103,11 +138,17 @@ def getSI(eig_nodules):
     
     return SI_nodules
 
+"""
+3.2 Curvedness approach 
+======================== 
+we will compute the curvedness manually
 
-# 3.2 Curvedness approach 
-# ======================== 
-#we will compute the curvedness manually
-
+Arguments:
+    * eig_nodules: eigenvalues of the nodules
+    
+Return:
+    * CV_nodules: nodules curvedness
+"""
 def getCV(eig_nodules):
     CV_nodules = []
     for all_sigmas_nodule in eig_nodules:
@@ -123,8 +164,15 @@ def getCV(eig_nodules):
         CV_nodules.append(np.squeeze(CV_nodule))
     return CV_nodules
     
-# 3.3 Central adaptive miedialness approach 
-# ==========================================
+"""
+3.3 Central adaptive miedialness approach 
+==========================================
+Arguments:
+    * eig_nodules: eigenvalues of the nodules
+    
+Return:
+    * Vmed_nodules: nodules central adaptive miedialness approach
+"""
 
 def getVmed(eig_nodules):     
     Vmed_nodules = []
