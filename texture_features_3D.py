@@ -76,7 +76,8 @@ def reshapeGabor(filtered_ims, nodules, slices_per_nodule):
        
         for i in range(36):
             values = [each_img_nodule[k] for k in range(i,len(each_img_nodule)-(35-i), 36)]
-            nodule_metrics.append([np.mean(np.hstack(values)), np.std(np.hstack(values))])
+            nodule_metrics.append(np.mean(np.hstack(values)))
+            nodule_metrics.append(np.std(np.hstack(values)))
          
         gabor_results.append(nodule_metrics)
          
