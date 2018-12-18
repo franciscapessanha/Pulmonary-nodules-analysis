@@ -3,7 +3,7 @@
 from get_data import getData
 import numpy as np
 import matplotlib.pyplot as plt
-
+from sklearn import metrics
 
 from keras.utils import to_categorical
 from keras.models import Sequential
@@ -20,17 +20,17 @@ def run_CNN_segmentation_3D():
     train_volumes, train_volumes_masks, y_train, val_volumes, val_volumes_masks, y_val, test_volumes, test_volumes_masks, y_test = getData(mode = "default", type_ = "volume")
     train_volumes, test_volumes, val_volumes, train_Y_one_hot, test_Y_one_hot, val_Y_one_hot=prepare_CNN(train_volumes, train_volumes_masks, y_train, test_volumes, test_volumes_masks, y_test , val_volumes, val_volumes_masks, y_val)
     predicted_classes, fashion_train=train_model(train_volumes, test_volumes, val_volumes, train_Y_one_hot, test_Y_one_hot, val_Y_one_hot) # model predicted for test set
-    show_loss_accuracy(fashion_train)
+    show_loss(fashion_train)
    
     solid_pred, sub_solid_pred, non_solid_pred = separateClasses(predicted_classes)
     solid_label, sub_solid_label, non_solid_label = separateClasses(y_test)
-    
-    dice_solid, jaccard_solid, _, accuracy_solid = getPerformanceMetrics(solid_pred, solid_label)
-    dice_sub_solid, jaccard_sub_solid, _, accuracy_sub_solid = getPerformanceMetrics(sub_solid_pred, sub_solid_label)
-    dice_non_solid, jaccard_non_solid, _, accuracy_non_solid = getPerformanceMetrics(non_solid_pred, non_solid_label)
-    print("Solid texture: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice_solid, jaccard_solid, accuracy_solid))
-    print("Sub solid texture: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice_sub_solid, jaccard_sub_solid, accuracy_sub_solid))
-    print("Non solid texture: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice_non_solid, jaccard_non_solid, accuracy_non_solid))
+      
+    accuracy_solid, precision_solid, recall_solid, auc_solid = getPerformanceMetrics(solid_pred, solid_label)
+    accuracy_sub, precision_sub, recall_sub, auc_sub = getPerformanceMetrics(sub_solid_pred, sub_solid_label)
+    accuracy_non, precision_non, recall_non, auc_non = getPerformanceMetrics(non_solid_pred, non_solid_label)
+    print("Solid texture: The accuracy value is %.2f and the precision value is %.2f. The recall is %.2f  and the auc is %.2f" % (accuracy_solid, precision_solid, recall_solid, auc_solid))
+    print("Sub solid texture: The accuracy value is %.2f and the precision value is %.2f. The recall is %.2f  and the auc is %.2f" % (accuracy_sub, precision_sub, recall_sub, auc_sub))
+    print("Non solid texture: The accuracy value is %.2f and the precision value is %.2f. The recall is %.2f  and the auc is %.2f" % (accuracy_non, precision_non, recall_non, auc_non))
    
     
 #%%
@@ -106,20 +106,19 @@ def train_model(train_volumes, test_volumes, val_volumes, train_Y_one_hot, test_
     #If this happens, then the gradient flowing through the unit will forever be zero from that point on. 
     #Leaky ReLUs attempt to solve this: the function will not be zero but will instead have a small negative slope.
     fashion_model = Sequential()
-    fashion_model.add(Conv3D(16, kernel_size=(3, 3,3), input_shape=(51,51,51,1),padding='same'))
-    fashion_model.add(LeakyReLU(alpha=0.1))
+    fashion_model.add(Conv3D(16, kernel_size=(3, 3,3),activation='relu', input_shape=(51,51,51,1),padding='same'))
     fashion_model.add(MaxPooling3D((2, 2,2),padding='same'))
     fashion_model.add(BatchNormalization())
     fashion_model.add(Dropout(0.2))
     
     
-    fashion_model.add(Conv3D(64, (3, 3,3),padding='same'))
+    fashion_model.add(Conv3D(64, (3, 3,3),activation='relu',padding='same'))
     fashion_model.add(LeakyReLU(alpha=0.1))
     fashion_model.add(MaxPooling3D((2, 2,2),padding='same'))
     fashion_model.add(BatchNormalization())
     fashion_model.add(Dropout(0.2))
     
-    fashion_model.add(Conv3D(64, (3, 3,3),padding='same'))
+    fashion_model.add(Conv3D(64, (3, 3,3),activation='relu',padding='same'))
     fashion_model.add(LeakyReLU(alpha=0.1))
     fashion_model.add(MaxPooling3D((2, 2,2),padding='same'))
     fashion_model.add(BatchNormalization())
@@ -135,19 +134,20 @@ def train_model(train_volumes, test_volumes, val_volumes, train_Y_one_hot, test_
     
     fashion_model.compile(loss=keras.losses.categorical_crossentropy, optimizer=keras.optimizers.Adam(),metrics=['accuracy'])
     #fashion_model.summary()
+    
     callbacks = [
-        EarlyStopping(patience=10, verbose=1),
-        ReduceLROnPlateau(factor=0.1, patience=3, min_lr=0.00001, verbose=1),
-        ModelCheckpoint('model.h5', verbose=1, save_best_only=True, save_weights_only=True)
+        EarlyStopping(patience=10, verbose=0),
+        ReduceLROnPlateau(factor=0.1, patience=3, min_lr=0.00001, verbose=0),
+        ModelCheckpoint('model3dtexture.h5', verbose=0, save_best_only=True, save_weights_only=True)
     ]
-    fashion_train=fashion_model.fit(train_volumes, train_Y_one_hot, batch_size=batch_size,epochs=epochs,callbacks=callbacks,verbose=1, validation_data=(val_volumes, val_Y_one_hot), class_weight = class_weights)
+    
+    
+    fashion_train=fashion_model.fit(train_volumes, train_Y_one_hot, batch_size=batch_size,epochs=epochs, callback=callbacks,verbose=1, validation_data=(val_volumes, val_Y_one_hot), class_weight = class_weights)
     #fashion_model.summary()
-    test_eval = fashion_model.evaluate(test_volumes, test_Y_one_hot, verbose=0)
-    print('Test loss:', test_eval[0])
-    print('Test accuracy:', test_eval[1])
+    
+    fashion_model.load_weights('model3dtextura.h5')
     
     predicted_classes = fashion_model.predict(test_volumes)
-    
     predicted_classes = np.argmax(np.round(predicted_classes),axis=1)
 
     return predicted_classes, fashion_train
@@ -164,7 +164,7 @@ Arguments: fashion_train - model trained
 Returns:
     *void
 """
-def show_loss_accuracy(fashion_train):
+def show_loss(fashion_train):
     # Show
     accuracy = fashion_train.history['acc']
     val_accuracy = fashion_train.history['val_acc']
@@ -203,22 +203,25 @@ def confusionMatrix(predictions, labels):
                 false_negatives += 1
                 
     return np.asarray([[true_positives, false_negatives], [false_positives, true_negatives]]) 
+
+def getPerformanceMetrics(predictions, labels):
+    c_matrix = confusionMatrix(predictions, labels)
     
-def getPerformanceMetrics(predictions_outer_lung, labels_outer_lung):
-    c_matrix_outer_lung = confusionMatrix(predictions_outer_lung, labels_outer_lung)
-    
-    true_positives = c_matrix_outer_lung[0,0]
-    false_negatives = c_matrix_outer_lung[0,1]
-    false_positives = c_matrix_outer_lung[1,0]
-    true_negatives = c_matrix_outer_lung[1,1]
+    true_positives = c_matrix[0,0]
+    false_negatives = c_matrix[0,1]
+    false_positives = c_matrix[1,0]
+    true_negatives = c_matrix[1,1]
 
     accuracy = (true_positives + true_negatives)/(true_positives + true_negatives + false_positives + false_negatives)
+    precision = (true_positives)/(true_positives + false_positives + 10**-12)
     
-    dice = (2*true_positives/(false_positives+false_negatives+(2*true_positives)))
-    jaccard = (true_positives)/(true_positives+false_positives+false_negatives)
-    matrix = np.asarray([[true_positives, false_negatives], [false_positives, true_negatives]])
+    recall = (true_positives)/(true_positives + false_negatives)
+    #matrix = np.asarray([[true_positives, false_negatives], [false_positives, true_negatives]])
     
-    return dice, jaccard, matrix, accuracy 
+    fp_rate, tp_rate, thresholds = metrics.roc_curve(labels, predictions, pos_label = 1)
+    auc = metrics.auc(fp_rate, tp_rate)
+    
+    return accuracy, precision, recall, auc
 
 def separateClasses(predictSVM):
     solid =[] # label 2
@@ -242,5 +245,5 @@ def separateClasses(predictSVM):
             
     return solid, sub_solid, non_solid
 
-
+#%%
 run_CNN_segmentation_3D()
