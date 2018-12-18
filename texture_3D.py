@@ -15,8 +15,16 @@ from texture_features_3D import getTextureFeatures
 from sklearn import metrics
 """
 Run
-===============================================================================
-""" 
+==============
+
+Allows to run the code for 2D texture, choosing default or cross-validation mode. 
+
+Arguments:
+    * mode: default or cross-validation
+    
+Return: void
+
+"""
 def run(mode = "default"):
     if mode == "default": 
         train_volumes, train_masks,y_train, val_volumes, val_masks,y_val, test_volumes, test_masks, y_test = getData(mode = "default", type_ = "volume")
@@ -57,6 +65,24 @@ def run(mode = "default"):
         print("---------------TEST SET --------------")
         showResultsCrossVal(test_int_metrics, test_circ_metrics, test_lbp_metrics, test_gb_metrics, test_all_metrics)
        
+  """
+Cross-Validation Results
+==============
+
+Prints the results for the cross-validation metrics.
+
+Arguments:
+    * int_metrics: intensity metrics for a classifier
+    * circ_metris: circularity metrics for a classifier
+    * lpb_metrics: LBP metrics for a classifier
+    * gb_metrics: Gabor Filters metrics for a classifier
+    * all_metrics: concatenate metrics for a classifier
+    
+Return: void
+    
+"""      
+         
+        
 def showResultsCrossVal(int_metrics, circ_metrics, lbp_metrics,gb_metrics, all_metrics):
     print("\nIntensity Features only \n=======================")
     performaceCrossVal(int_metrics)
@@ -88,7 +114,19 @@ def performaceCrossVal(metrics):
 """
 Normalize data
 ===============================================================================
+
+Normalization of the input data. 
+
+Arguments:
+    * train_slices: images related to a set of images
+    * train_slices_masks: masks related to a set of images
+    
+Return:
+    * mean_int: mean of all pixels of the nodules 
+    * std_int: standard deviation of all pixels of the nodules 
+
 """  
+
 def normalizeData(train_slices, train_slices_masks):
     all_px = []
     for nodule, mask in zip(train_slices, train_slices_masks):
@@ -100,9 +138,22 @@ def normalizeData(train_slices, train_slices_masks):
     return mean_int, std_int
  
 """
-Get Prediction
+Get Prediction SVM
 ===============================================================================
+
+Train the model using the SVM classifier and predict.  
+
+Arguments:
+    * train_features: features related to the train set
+    * train_y: labels of the training set
+    * features: features of test or validation set
+    * labels: labels of the test or validation set
+        
+Return:
+    * predictSVM: prediction of the model 
+    
 """
+
 def getPredictionSVM(train_features, train_y, val_features, val_y):
     modelSVM = SVC(kernel = 'linear', gamma = 'auto', decision_function_shape= 'ovo',class_weight='balanced')
     modelSVM.fit(train_features, train_y)
@@ -110,12 +161,47 @@ def getPredictionSVM(train_features, train_y, val_features, val_y):
 
     return predictSVM
 
+"""
+Get Prediction kNN
+===============================================================================
+
+Train the model using the kNN classifier and predict.  
+
+Arguments:
+    * train_features: features related to the train set
+    * train_y: labels of the training set
+    * features: features of test or validation set
+    * labels: labels of the test or validation set
+        
+Return:
+    * predictkNN: prediction of the model 
+    
+"""
+
 def getPredictionKNN(train_features, train_y, features, labels):
     modelKNN = KNeighborsClassifier(n_neighbors=11)
     modelKNN.fit(train_features, train_y)
     predictKNN = modelKNN.predict(features)
 
     return predictKNN
+
+"""
+Confusion Matrix
+===============================================================================
+
+Calculates the confusion matrix given a prediction and a label
+
+Arguments:
+    * predictions: results obtained from the classifier
+    * labels: ground truth of the classification
+        
+Return:
+    * true_positives
+    * false_negatives
+    * false_positives
+    * true_negatives
+    
+"""
 
 def confusionMatrix(predictions, labels):
     true_positives = 0
@@ -136,6 +222,24 @@ def confusionMatrix(predictions, labels):
                 false_negatives += 1
                 
     return np.asarray([[true_positives, false_negatives], [false_positives, true_negatives]]) 
+
+
+"""
+getPerformanceMetrics
+=========================
+
+Calculates accuracy, precision, recall, auc for evaluation given an array of predictions and the corresponding ground truth
+
+Arguments: 
+    * predictions- array with predicted results
+    * labels-  corresponding ground true
+
+Return: 
+    * accuracy 
+    * precision 
+    * recall 
+    * auc 
+"""
     
 def getPerformanceMetrics(predictions, labels):
     c_matrix = confusionMatrix(predictions, labels)
@@ -155,6 +259,18 @@ def getPerformanceMetrics(predictions, labels):
     auc = metrics.auc(fp_rate, tp_rate)
     
     return accuracy, precision, recall, auc
+
+"""
+separateClasses 
+============================
+Separates classes in 3 vector, one for each classes, where the 1's correspondes to the predicted true results and 0's to false predicted results                    
+
+Arguments: 
+        * predictSVM: array with multiple classes 
+
+Returns: 
+        * solid, sub_solid, non_solid - binary vectors of each class
+"""
 
 def separateClasses(predictSVM):
     solid =[] # label 2
@@ -178,6 +294,24 @@ def separateClasses(predictSVM):
             
     return solid, sub_solid, non_solid
 
+"""
+Texture Metrics
+===============================================================================
+
+Train the model using the SVM classifier and predict.  
+
+Arguments:
+    * prediction: results obtained from the classifier
+    * val_y: ground truth of the classification
+        
+Return:
+    * true_positives
+    * false_negatives
+    * false_positives
+    * true_negatives
+    
+"""
+
 def textureMetrics(prediction, val_y):
     solid_pred, sub_solid_pred, non_solid_pred = separateClasses(prediction)
     solid_label, sub_solid_label, non_solid_label = separateClasses(val_y)
@@ -194,7 +328,30 @@ def textureMetrics(prediction, val_y):
 """
 Get Texture
 ===============================================================================
-"""
+
+Train the model using the SVM classifier and predict.  
+
+Arguments:
+    * train_x: training set
+    * train_masks: ground truth of the training set
+    * train_y: labels of the training set
+    * val_x: validation or test set
+    * val_masks: ground truth of the validation or test set
+    * val_y: labels of the validation or test set
+        
+Return:
+    * int_metrics: intensity metrics for validation
+    * circ_metrics: circularity metrics for validation
+    * lbp_metrics: LBP metrics for validation
+    * gb_metrics: Gabor Filter metrics for validation
+    * all_metrics: concatenate metrics of all features for validation
+    * test_int_metrics: intensity metrics for test
+    * test_circ_metrics: circularity metrics for test
+    * test_lbp_metrics: LBP metrics for test
+    * test_gb_metrics: Gabor Filter metrics for test
+    * test_all_metrics: concatenate metrics of all features for test
+
+"""  
 
 def getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, test_masks, test_y):
     mean_int, std_int = normalizeData(train_x, train_masks)
@@ -202,15 +359,14 @@ def getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, t
     val_x = (val_x - mean_int)/std_int
     test_x = (test_x - mean_int)/std_int
     
-<<<<<<< HEAD
     print("1. Intensity Features")
     train_int, val_int, test_int, train_circ, val_circ, test_circ = getIntensityFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks)
     print("2. Texture Features")
-=======
+
     print("1. Intensity features")
     train_int, val_int, test_int, train_circ, val_circ, test_circ = getIntensityFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks)
     print("2. Texture features")
->>>>>>> 46abc834938887b9548443c9a429eafbf16b81d4
+
     train_gabor, val_gabor, test_gabor,train_lbp, val_lbp, test_lbp = getTextureFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks)
     
     print("------------------------------------------- VALIDATION SET -------------------------------------------")
@@ -268,4 +424,4 @@ def getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, t
     
     return int_metrics, circ_metrics, lbp_metrics, gb_metrics, all_metrics, test_int_metrics, test_circ_metrics, test_lbp_metrics, test_gb_metrics, test_all_metrics
     
-run("cross_val")
+run()
