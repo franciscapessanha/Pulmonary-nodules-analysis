@@ -15,22 +15,49 @@ import keras
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
    
 #%%
-def run_CNN_segmentation_3D():
+"""
+Runs all code regarding texture 3D for CNN aproach
+
+arguments: mode - default runs 1 time or cross_val runs 5 times with different sets of trains/validation
+
+returns: void
+"""
+
+def run_CNN_texture_3D(mode='default'):
+    if mode== 'default':
+        train_volumes, train_volumes_masks, y_train, val_volumes, val_volumes_masks, y_val, test_volumes, test_volumes_masks, y_test = getData(mode = "default", type_ = "volume")
+        train_volumes, test_volumes, val_volumes, train_Y_one_hot, test_Y_one_hot, val_Y_one_hot=prepare_CNN(train_volumes, train_volumes_masks, y_train, test_volumes, test_volumes_masks, y_test , val_volumes, val_volumes_masks, y_val)
+        predicted_classes, fashion_train=train_model(train_volumes, test_volumes, val_volumes, train_Y_one_hot, test_Y_one_hot, val_Y_one_hot) # model predicted for test set
+        show_loss(fashion_train)
+       
+        solid_pred, sub_solid_pred, non_solid_pred = separateClasses(predicted_classes)
+        solid_label, sub_solid_label, non_solid_label = separateClasses(y_test)
+          
+        accuracy_solid, precision_solid, recall_solid, auc_solid = getPerformanceMetrics(solid_pred, solid_label)
+        accuracy_sub, precision_sub, recall_sub, auc_sub = getPerformanceMetrics(sub_solid_pred, sub_solid_label)
+        accuracy_non, precision_non, recall_non, auc_non = getPerformanceMetrics(non_solid_pred, non_solid_label)
+        print("Solid texture: The accuracy value is %.2f and the precision value is %.2f. The recall is %.2f  and the auc is %.2f" % (accuracy_solid, precision_solid, recall_solid, auc_solid))
+        print("Sub solid texture: The accuracy value is %.2f and the precision value is %.2f. The recall is %.2f  and the auc is %.2f" % (accuracy_sub, precision_sub, recall_sub, auc_sub))
+        print("Non solid texture: The accuracy value is %.2f and the precision value is %.2f. The recall is %.2f  and the auc is %.2f" % (accuracy_non, precision_non, recall_non, auc_non))
    
-    train_volumes, train_volumes_masks, y_train, val_volumes, val_volumes_masks, y_val, test_volumes, test_volumes_masks, y_test = getData(mode = "default", type_ = "volume")
-    train_volumes, test_volumes, val_volumes, train_Y_one_hot, test_Y_one_hot, val_Y_one_hot=prepare_CNN(train_volumes, train_volumes_masks, y_train, test_volumes, test_volumes_masks, y_test , val_volumes, val_volumes_masks, y_val)
-    predicted_classes, fashion_train=train_model(train_volumes, test_volumes, val_volumes, train_Y_one_hot, test_Y_one_hot, val_Y_one_hot) # model predicted for test set
-    show_loss(fashion_train)
-   
-    solid_pred, sub_solid_pred, non_solid_pred = separateClasses(predicted_classes)
-    solid_label, sub_solid_label, non_solid_label = separateClasses(y_test)
-      
-    accuracy_solid, precision_solid, recall_solid, auc_solid = getPerformanceMetrics(solid_pred, solid_label)
-    accuracy_sub, precision_sub, recall_sub, auc_sub = getPerformanceMetrics(sub_solid_pred, sub_solid_label)
-    accuracy_non, precision_non, recall_non, auc_non = getPerformanceMetrics(non_solid_pred, non_solid_label)
-    print("Solid texture: The accuracy value is %.2f and the precision value is %.2f. The recall is %.2f  and the auc is %.2f" % (accuracy_solid, precision_solid, recall_solid, auc_solid))
-    print("Sub solid texture: The accuracy value is %.2f and the precision value is %.2f. The recall is %.2f  and the auc is %.2f" % (accuracy_sub, precision_sub, recall_sub, auc_sub))
-    print("Non solid texture: The accuracy value is %.2f and the precision value is %.2f. The recall is %.2f  and the auc is %.2f" % (accuracy_non, precision_non, recall_non, auc_non))
+    elif mode == "cross_val":
+        train_volumes, train_volumes_masks, y_train , val_volumes, val_volumes_masks, y_val, test_volumes, test_volumes_masks, y_test = getData(mode = "cross_val", type_ = "volume")
+        
+        for train_x, train_masks, train_y, val_x, val_masks, val_y  in zip(train_volumes, train_volumes_masks, y_train , val_volumes, val_volumes_masks, y_val):
+            
+            train_volumes, test_volumes, val_volumes, train_Y_one_hot, test_Y_one_hot, val_Y_one_hot=prepare_CNN(train_x, train_masks, train_y, test_volumes, test_volumes_masks, y_test, val_x, val_masks, val_y)
+            predicted_classes, fashion_train=train_model(train_volumes, test_volumes, val_volumes, train_Y_one_hot, test_Y_one_hot, val_Y_one_hot)
+        
+            show_loss(fashion_train)
+            solid_pred, sub_solid_pred, non_solid_pred = separateClasses(predicted_classes)
+            solid_label, sub_solid_label, non_solid_label = separateClasses(y_test)
+              
+            accuracy_solid, precision_solid, recall_solid, auc_solid = getPerformanceMetrics(solid_pred, solid_label)
+            accuracy_sub, precision_sub, recall_sub, auc_sub = getPerformanceMetrics(sub_solid_pred, sub_solid_label)
+            accuracy_non, precision_non, recall_non, auc_non = getPerformanceMetrics(non_solid_pred, non_solid_label)
+            print("Solid texture: The accuracy value is %.2f and the precision value is %.2f. The recall is %.2f  and the auc is %.2f" % (accuracy_solid, precision_solid, recall_solid, auc_solid))
+            print("Sub solid texture: The accuracy value is %.2f and the precision value is %.2f. The recall is %.2f  and the auc is %.2f" % (accuracy_sub, precision_sub, recall_sub, auc_sub))
+            print("Non solid texture: The accuracy value is %.2f and the precision value is %.2f. The recall is %.2f  and the auc is %.2f" % (accuracy_non, precision_non, recall_non, auc_non))
    
     
 #%%
@@ -142,10 +169,10 @@ def train_model(train_volumes, test_volumes, val_volumes, train_Y_one_hot, test_
     ]
     
     
-    fashion_train=fashion_model.fit(train_volumes, train_Y_one_hot, batch_size=batch_size,epochs=epochs, callback=callbacks,verbose=1, validation_data=(val_volumes, val_Y_one_hot), class_weight = class_weights)
+    fashion_train=fashion_model.fit(train_volumes, train_Y_one_hot, batch_size=batch_size,epochs=epochs, callbacks=callbacks,verbose=0, validation_data=(val_volumes, val_Y_one_hot), class_weight = class_weights)
     #fashion_model.summary()
     
-    fashion_model.load_weights('model3dtextura.h5')
+    fashion_model.load_weights('model3dtexture.h5')
     
     predicted_classes = fashion_model.predict(test_volumes)
     predicted_classes = np.argmax(np.round(predicted_classes),axis=1)
@@ -157,7 +184,7 @@ def train_model(train_volumes, test_volumes, val_volumes, train_Y_one_hot, test_
 """
 show_loss_accuracy
 ===============
-shows the cross entropy loss and the accuracy of train and validation sets during each epoch
+shows the cross entropy loss of train and validation sets during each epoch
 
 Arguments: fashion_train - model trained
     
@@ -184,6 +211,13 @@ def show_loss(fashion_train):
     
     
 #%%
+"""
+confusionMatrix - calculates the confusion matriz given a prediction and a labeled array
+=====================
+Arguments: predictions: array with predicted results
+            labels: corresponding ground true
+Return: confusion matrix
+"""
 def confusionMatrix(predictions, labels):
     true_positives = 0
     false_negatives = 0
@@ -204,6 +238,14 @@ def confusionMatrix(predictions, labels):
                 
     return np.asarray([[true_positives, false_negatives], [false_positives, true_negatives]]) 
 
+"""
+getPerformanceMetrics- Calculates accuracy, precision, recall, auc for evaluation given an array of predictions and the corresponding ground true
+=========================
+Arguments: 
+            predictions- array with predicted results
+            labels-  corresponding ground true
+Return: accuracy, precision, recall, auc - evaluation metrics
+"""
 def getPerformanceMetrics(predictions, labels):
     c_matrix = confusionMatrix(predictions, labels)
     
@@ -223,22 +265,32 @@ def getPerformanceMetrics(predictions, labels):
     
     return accuracy, precision, recall, auc
 
-def separateClasses(predictSVM):
+"""
+separateClasses - separates classes in 3 vector, one for each classes, 
+                    where the values=1 correspondes to the predicted true results and 0 false predicted result
+============================                    
+Arguments: 
+        predict- array with multiple classes 
+Returns: solid, sub_solid, non_solid - binary vectors of each class
+"""
+
+
+def separateClasses(predict):
     solid =[] # label 2
     sub_solid = [] # label 1
     non_solid = [] # label 0
-    for j in range(len(predictSVM)):
-        if predictSVM[j] == 0:
+    for j in range(len(predict)):
+        if predict[j] == 0:
             non_solid.append(1)
         else: 
             non_solid.append(0)
             
-        if predictSVM[j] == 1:
+        if predict[j] == 1:
             sub_solid.append(1)
         else: 
             sub_solid.append(0)
             
-        if predictSVM[j] == 2:
+        if predict[j] == 2:
             solid.append(1)
         else: 
             solid.append(0)
@@ -246,4 +298,4 @@ def separateClasses(predictSVM):
     return solid, sub_solid, non_solid
 
 #%%
-run_CNN_segmentation_3D()
+run_CNN_texture_3D(mode='cross_val')

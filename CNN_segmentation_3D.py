@@ -5,20 +5,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 from lung_mask import getLungMask
 
-import tensorflow as tf
 
-from keras.models import Model, load_model
-from keras.layers import Input, BatchNormalization, Activation, Dense, Dropout
-from keras.layers.core import Lambda, RepeatVector, Reshape
+from keras.models import Model
+from keras.layers import Input, BatchNormalization, Activation, Dropout
 from keras.layers.convolutional import Conv3D, Conv3DTranspose
-from keras.layers.pooling import MaxPooling3D, GlobalMaxPool3D
+from keras.layers.pooling import MaxPooling3D
 from keras.layers.merge import concatenate
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from keras.optimizers import Adam
 #import keras
 
 import cv2
-
+train_volumes, train_volumes_masks, _, val_volumes, val_volumes_masks, _, test_volumes, test_volumes_masks, _ = getData(type_ = "volume")
 
 #%%
 
@@ -49,18 +47,7 @@ reshaped for input on the CNN
 
 def prepare_CNN(train_volumes, train_volumes_masks, val_volumes, val_volumes_masks, test_volumes, test_volumes_masks):
     
-    #Aplly lung mask
-    for i in range(len(train_volumes)):
-        chull=getLungMask(train_volumes[i])
-        train_volumes[i][chull == 0] = 0
-    for i in range(len(val_volumes)):
-        chull=getLungMask(val_volumes[i])
-        val_volumes[i][chull == 0] = 0
-    for i in range(len(test_volumes)):
-        chull=getLungMask(test_volumes[i])
-        test_volumes[i][chull == 0] = 0
-        
-        
+  
 
     mean_int=np.mean(train_volumes)
     std_int=np.std(train_volumes)
@@ -69,13 +56,16 @@ def prepare_CNN(train_volumes, train_volumes_masks, val_volumes, val_volumes_mas
     val_volumes = (val_volumes - mean_int)/std_int
     test_volumes = (test_volumes - mean_int)/std_int
     
-    
+    train=[]
+    test=[]
+    val=[]
+    train_mask=[]
+    val_mask=[]
     #reshape to a multiple of 16 to better applye the U-net CNN - padding from 51 to 64
-    train_volumes= [cv2.copyMakeBorder(train_volumes[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(train_volumes))]
-    val_volumes= [cv2.copyMakeBorder(val_volumes[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(val_volumes))]
-    test_volumes= [cv2.copyMakeBorder(test_volumes[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(test_volumes))]
-    train_volumes_masks= [cv2.copyMakeBorder(train_volumes_masks[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(train_volumes_masks))]
-    val_volumes_masks= [cv2.copyMakeBorder(val_volumes_masks[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(val_volumes_masks))]
+    for train_volume, i in zip(train_volumes, range(len(train_volumes))):
+        train_volumes[i]= [cv2.copyMakeBorder(train_volume[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(train_volume))]
+   
+    #val_volume_mask= [cv2.copyMakeBorder(val_volume_mask[i],7,6,6,7,cv2.BORDER_CONSTANT,value=0) for i in range(len(val_volume_mask))]
 
 
     train_volumes_masks = np.asarray(train_volumes_masks)
@@ -94,13 +84,13 @@ def prepare_CNN(train_volumes, train_volumes_masks, val_volumes, val_volumes_mas
     test_volumes = test_volumes.astype('float32')
     val_volumes = val_volumes.astype('float32')
    
-    train_volumes = train_volumes.reshape(-1,64,64,1)
-    test_volumes = test_volumes.reshape(-1,64,64,1)
-    val_volumes = val_volumes.reshape(-1, 64,64, 1)
+    train_volumes = train_volumes.reshape(-1,64,64,64,1)
+    test_volumes = test_volumes.reshape(-1,64,64,64,1)
+    val_volumes = val_volumes.reshape(-1, 64,64, 64,1)
     
-    train_volumes_masks = train_volumes_masks.reshape(-1,64,64,1)
+    train_volumes_masks = train_volumes_masks.reshape(-1,64,64,64,1)
     
-    val_volumes_masks = val_volumes_masks.reshape(-1, 64,64, 1)
+    val_volumes_masks = val_volumes_masks.reshape(-1, 64,64,64, 1)
     
    
     
@@ -229,12 +219,12 @@ def train_model(train_volumes, test_volumes, val_volumes, train_volumes_masks, t
     callbacks = [
         EarlyStopping(patience=10, verbose=1),
         ReduceLROnPlateau(factor=0.1, patience=3, min_lr=0.00001, verbose=1),
-        ModelCheckpoint('model3dsegmentação.h5', verbose=1, save_best_only=True, save_weights_only=True)
+        ModelCheckpoint('model3dsegmentation.h5', verbose=1, save_best_only=True, save_weights_only=True)
     ]
     
     results = model.fit(train_volumes, train_volumes_masks, batch_size=batch,steps_per_epoch=10, epochs=epochs, callback=callbacks, verbose=0, validation_data=(val_volumes, val_volumes_masks))
     
-    model.load_weights('model3dsegmentação.h5')
+    model.load_weights('model3dsegmentation.h5')
     
     
     treshold=(0.35,0.4, 0.45, 0.5,0.55,0.6,0.65,0.7,0.75)

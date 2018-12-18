@@ -4,13 +4,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from lung_mask import getLungMask
 
-import tensorflow as tf
 
 from keras.models import Model, load_model
 from keras.layers import Input, BatchNormalization, Activation, Dense, Dropout
 from keras.layers.core import Lambda, RepeatVector, Reshape
 from keras.layers.convolutional import Conv2D, Conv2DTranspose
-from keras.layers.pooling import MaxPooling2D, GlobalMaxPool2D
+from keras.layers.pooling import MaxPooling2D
 from keras.layers.merge import concatenate
 from keras.callbacks import ReduceLROnPlateau
 from keras.optimizers import Adam
@@ -21,6 +20,13 @@ import cv2
 
 
 #%%
+"""
+Runs all code regarding segmentation 2D for CNN aproach
+
+arguments: mode - default rusn 1 time or cross_val runs 5 times with different sets of trains/validation
+
+returns: void
+"""
 
 
 def run_segmentation_CNN(mode = "default"):
@@ -28,10 +34,9 @@ def run_segmentation_CNN(mode = "default"):
         train_slices, train_slices_masks, _, val_slices, val_slices_masks, _, test_slices, test_slices_masks, _ = getData()
             
         train, test, val, trainMasks, testMasks, valMasks=prepare_CNN(train_slices, train_slices_masks, val_slices, val_slices_masks, test_slices, test_slices_masks)
-        results, accuracy, dice, jaccard, preds_test_nodules, accuracy_val, dice_val, jaccard_val, preds_val_nodules=train_model(train, test, val, trainMasks, testMasks, valMasks)
+        results, accuracy, dice, jaccard, preds_test_nodules=train_model(train, test, val, trainMasks, testMasks, valMasks)
         plot_loss(results)
         print("Test set: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice, jaccard, accuracy))
-        print("validation set: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice_val, jaccard_val, accuracy_val))
         
     
     if mode == "cross_val": 
@@ -40,10 +45,9 @@ def run_segmentation_CNN(mode = "default"):
         for train_x, train_masks, val_x, val_masks in zip(train_slices, train_slices_masks, val_slices, val_slices_masks):
             
             train, test, val, trainMasks, testMasks, valMasks=prepare_CNN(train_x, train_masks, val_x, val_masks, test_slices, test_slices_masks)
-            results, accuracy, dice, jaccard, preds_test_nodules, accuracy_val, dice_val, jaccard_val, preds_val_nodules=train_model(train, test, val, trainMasks, testMasks, valMasks)
+            results, accuracy, dice, jaccard, preds_test_nodules=train_model(train, test, val, trainMasks, testMasks, valMasks)
             plot_loss(results)
             print("Test set: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice, jaccard, accuracy))
-            print("validation set: The dice value is %.2f and the jaccard value is %.2f. The accuracy is %.2f" % (dice_val, jaccard_val, accuracy_val))
 
     
 
@@ -121,6 +125,16 @@ def prepare_CNN(train_slices, train_slices_masks, val_slices, val_slices_masks, 
     return train_slices, test_slices, val_slices, train_slices_masks, test_slices_masks, val_slices_masks
 
 #%%
+"""
+conv2d_block: Definition of the convolution layer for the model
+
+Arguments:  input_tensor-  input image
+            n_filters - number of filters
+            kernel_size - speaks for it self kernels of convolution
+            batch norm - batch normalization - True when it does it
+            
+return: model after convolutions and relu activation
+"""
 
 def conv2d_block(input_tensor, n_filters, kernel_size=3, batchnorm=True):
     # first layer
@@ -137,7 +151,16 @@ def conv2d_block(input_tensor, n_filters, kernel_size=3, batchnorm=True):
     x = Activation("relu")(x)
     return x
 
+"""
+get_unet: performs U-net model on image
 
+Arguments:  input_tensor-  input image
+            n_filters - number of filters
+            kernel_size - speaks for it self kernels of convolution
+            batch norm - batch normalization - True when it does it
+            
+return: trained model
+"""
 
 def get_unet(input_img, n_filters=16, dropout=0.4, batchnorm=True):
     
@@ -229,7 +252,7 @@ def train_model(train_slices, test_slices, val_slices, train_slices_masks, test_
     # define parameters
     im_width = 64
     im_height = 64
-    epochs=100
+    epochs=130
     batch=len(train_slices)
     
     input_img = Input((im_height, im_width, 1), name='img')
@@ -249,9 +272,9 @@ def train_model(train_slices, test_slices, val_slices, train_slices_masks, test_
         ModelCheckpoint('model2dsegmentação.h5', verbose=0, save_best_only=True, save_weights_only=True)
     ]
     
-    results = model.fit_generator(image_gen.flow(train_slices, train_slices_masks, batch_size=batch),steps_per_epoch=10, epochs=epochs, callback=callbacks, verbose=0, validation_data=(val_slices, val_slices_masks))
+    results = model.fit_generator(image_gen.flow(train_slices, train_slices_masks, batch_size=batch),steps_per_epoch=10, epochs=epochs, callbacks=callbacks, verbose=0, validation_data=(val_slices, val_slices_masks))
     
-    fashion_model.load_weights('model2dsegmentação.h5')
+    model.load_weights('model2dsegmentação.h5')
     
     
     treshold=(0.35,0.4, 0.45, 0.5,0.55,0.6,0.65,0.7,0.75)
@@ -272,16 +295,7 @@ def train_model(train_slices, test_slices, val_slices, train_slices_masks, test_
             maximo=metrics
             best_treshold=tresh
             
-    # Predict for test with treshold already defined by training set
-    preds_val = model.predict(val_slices, verbose=0)
-    preds_val_nodules = (preds_val >best_treshold).astype(np.uint8)
-    
-    val_slices_masks=val_slices_masks.reshape(-1,64,64)
-    preds_val_nodules=preds_val_nodules.reshape(-1,64,64)
-    
-    
-    accuracy_val, dice_val, jaccard_val = confusionMatrix(np.hstack(np.hstack(preds_val_nodules)), np.hstack(np.hstack(val_slices_masks)))
-
+   
     # Predict for test with treshold already defined by training set
     preds_test = model.predict(test_slices, verbose=0)
     preds_test_nodules = (preds_test >best_treshold).astype(np.uint8)
@@ -300,7 +314,7 @@ def train_model(train_slices, test_slices, val_slices, train_slices_masks, test_
     
     accuracy, dice, jaccard = confusionMatrix(np.hstack(np.hstack(preds_test_nodules)), np.hstack(np.hstack(test_slices_masks)))
 
-    return results, accuracy, dice, jaccard, preds_test_nodules, accuracy_val, dice_val, jaccard_val, preds_val_nodules
+    return results, accuracy, dice, jaccard, preds_test_nodules
 
 
 #%%
@@ -322,7 +336,13 @@ def closing(preds_image):
     return new_preds
        
 #%%
-
+"""
+confusionMatrix - calculates the confusion matriz given a prediction and a labeled array
+=====================
+Arguments: predictions: array with predicted results
+            labels: corresponding ground true
+Return: confusion matrix
+"""
 def confusionMatrix(predictions, labels):
     true_positives = 0
     false_negatives = 0
@@ -373,4 +393,4 @@ def plot_loss(results):
 
 
 #%%
-run_segmentation_CNN()
+run_segmentation_CNN(mode = "cross_val")

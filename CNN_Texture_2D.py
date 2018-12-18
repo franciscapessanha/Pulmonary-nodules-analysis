@@ -14,9 +14,13 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.callbacks import ModelCheckpoint
 import keras
 
-
+#%%
 """
-main function for CNN_texture_2D
+Runs all code regarding texture 2D for CNN aproach
+
+arguments: mode - default runs 1 time or cross_val runs 5 times with different sets of trains/validation
+
+returns: void
 """
 def run_CNN_segmentation_2D(mode = "default"):
     if mode == "default": 
@@ -192,12 +196,18 @@ Evaluation
 ===============================================================================
 """
 
+"""
+confusionMatrix - calculates the confusion matriz given a prediction and a labeled array
+=====================
+Arguments: predictions: array with predicted results
+            labels: corresponding ground true
+Return: confusion matrix
+"""
 def confusionMatrix(predictions, labels):
     true_positives = 0
     false_negatives = 0
     false_positives = 0
     true_negatives = 0
-    
     
     for i in range(len(predictions)):
         if predictions[i] == labels[i] :
@@ -212,7 +222,15 @@ def confusionMatrix(predictions, labels):
                 false_negatives += 1
                 
     return np.asarray([[true_positives, false_negatives], [false_positives, true_negatives]]) 
-    
+
+"""
+getPerformanceMetrics- Calculates accuracy, precision, recall, auc for evaluation given an array of predictions and the corresponding ground true
+=========================
+Arguments: 
+            predictions- array with predicted results
+            labels-  corresponding ground true
+Return: accuracy, precision, recall, auc - evaluation metrics
+"""
 def getPerformanceMetrics(predictions, labels):
     c_matrix = confusionMatrix(predictions, labels)
     
@@ -231,6 +249,15 @@ def getPerformanceMetrics(predictions, labels):
     auc = metrics.auc(fp_rate, tp_rate)
     
     return accuracy, precision, recall, auc
+
+"""
+separateClasses - separates classes in 3 vector, one for each classes, 
+                    where the values=1 correspondes to the predicted true results and 0 false predicted result
+============================                    
+Arguments: 
+        predict- array with multiple classes 
+Returns: solid, sub_solid, non_solid - binary vectors of each class
+"""
 
 def separateClasses(predict):
     solid =[] # label 2
