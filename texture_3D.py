@@ -196,71 +196,70 @@ Get Texture
 ===============================================================================
 """
 
-#def getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, test_masks, test_y):
-print("entrou")
-mean_int, std_int = normalizeData(train_x, train_masks)
-train_x = (train_x - mean_int)/std_int
-val_x = (val_x - mean_int)/std_int
-test_x = (test_x - mean_int)/std_int
-
-train_int, val_int, test_int, train_circ, val_circ, test_circ = getIntensityFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks)
-print("int")
-train_gabor, val_gabor, test_gabor,train_lbp, val_lbp, test_lbp = getTextureFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks)
-print("gabor")
-
-print("------------------------------------------- VALIDATION SET -------------------------------------------")
-
-print("\nIntensity Features only \n=======================")
-prediction_int = getPredictionSVM(train_int ,train_y, val_int , val_y)
-int_metrics = textureMetrics(prediction_int, val_y)
-
-print("\nCircular Features only \n=======================")
-prediction_circ = getPredictionSVM(train_circ, train_y, val_circ, val_y)
-circ_metrics = textureMetrics(prediction_circ, val_y)
-
-print("\nLBP Features only \n=======================")
-prediction_lbp = getPredictionSVM(train_lbp, train_y, val_lbp, val_y)
-lbp_metrics = textureMetrics(prediction_lbp, val_y)
-
-print("\nGabor Features only \n=======================")
-prediction_gb = getPredictionSVM(train_gabor, train_y, val_gabor, val_y)
-gb_metrics = textureMetrics(prediction_gb, val_y)
-
-print("\nAll Features\n=======================")
-train_features = np.concatenate((train_int, train_circ,train_lbp, train_gabor), axis=1)
-val_features = np.concatenate((val_int, val_circ, val_lbp, val_gabor), axis=1)
-
-prediction_all = getPredictionSVM(train_features, train_y, val_features, val_y)
-all_metrics = textureMetrics(prediction_all, val_y)
-   
-
-print("------------------------------------------- TEST SET -------------------------------------------")
-
-print("\nIntensity Features only \n=======================")
-prediction_int = getPredictionSVM(train_int ,train_y, test_int , test_y)
-test_int_metrics = textureMetrics(prediction_int, test_y)
-
+def getTexture(train_x, train_masks, train_y, val_x, val_masks, val_y, test_x, test_masks, test_y):
+    mean_int, std_int = normalizeData(train_x, train_masks)
+    train_x = (train_x - mean_int)/std_int
+    val_x = (val_x - mean_int)/std_int
+    test_x = (test_x - mean_int)/std_int
     
-print("\nCircular Features only \n=======================")
-prediction_circ = getPredictionSVM(train_circ, train_y, test_circ, test_y)
-test_circ_metrics = textureMetrics(prediction_circ, test_y)
-
-print("\nLBP Features only \n=======================")
-prediction_lbp = getPredictionSVM(train_lbp, train_y, test_lbp, test_y)
-test_lbp_metrics = textureMetrics(prediction_lbp, test_y)
-
+    print("1. Intensity Features")
+    train_int, val_int, test_int, train_circ, val_circ, test_circ = getIntensityFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks)
+    print("2. Texture Features")
+    train_gabor, val_gabor, test_gabor,train_lbp, val_lbp, test_lbp = getTextureFeatures(train_x, train_masks, val_x, val_masks, test_x, test_masks)
     
-print("\nGabor Features only \n=======================")
-prediction_gb = getPredictionSVM(train_gabor, train_y, test_gabor, test_y)
-test_gb_metrics = textureMetrics(prediction_gb, test_y)
-
-print("\nAll Features\n=======================")
-train_features = np.concatenate((train_int, train_circ,train_gabor,train_lbp), axis=1)
-test_features = np.concatenate((test_int, test_circ, test_gabor,test_lbp), axis=1)
-prediction_all = getPredictionSVM(train_features, train_y, test_features, test_y)
-test_all_metrics = textureMetrics(prediction_all, test_y)
-   
+    print("------------------------------------------- VALIDATION SET -------------------------------------------")
     
-    #return int_metrics, circ_metrics, lbp_metrics, gb_metrics, all_metrics, test_int_metrics, test_circ_metrics, test_lbp_metrics, test_gb_metrics, test_all_metrics
+    print("\nIntensity Features only \n=======================")
+    prediction_int = getPredictionSVM(train_int ,train_y, val_int , val_y)
+    int_metrics = textureMetrics(prediction_int, val_y)
     
-#run("cross_val")
+    print("\nCircular Features only \n=======================")
+    prediction_circ = getPredictionSVM(train_circ, train_y, val_circ, val_y)
+    circ_metrics = textureMetrics(prediction_circ, val_y)
+    
+    print("\nLBP Features only \n=======================")
+    prediction_lbp = getPredictionSVM(train_lbp, train_y, val_lbp, val_y)
+    lbp_metrics = textureMetrics(prediction_lbp, val_y)
+    
+    print("\nGabor Features only \n=======================")
+    prediction_gb = getPredictionSVM(train_gabor, train_y, val_gabor, val_y)
+    gb_metrics = textureMetrics(prediction_gb, val_y)
+    
+    print("\nAll Features\n=======================")
+    train_features = np.concatenate((train_int, train_circ,train_lbp, train_gabor), axis=1)
+    val_features = np.concatenate((val_int, val_circ, val_lbp, val_gabor), axis=1)
+    
+    prediction_all = getPredictionSVM(train_features, train_y, val_features, val_y)
+    all_metrics = textureMetrics(prediction_all, val_y)
+       
+    
+    print("------------------------------------------- TEST SET -------------------------------------------")
+    
+    print("\nIntensity Features only \n=======================")
+    prediction_int = getPredictionSVM(train_int ,train_y, test_int , test_y)
+    test_int_metrics = textureMetrics(prediction_int, test_y)
+    
+        
+    print("\nCircular Features only \n=======================")
+    prediction_circ = getPredictionSVM(train_circ, train_y, test_circ, test_y)
+    test_circ_metrics = textureMetrics(prediction_circ, test_y)
+    
+    print("\nLBP Features only \n=======================")
+    prediction_lbp = getPredictionSVM(train_lbp, train_y, test_lbp, test_y)
+    test_lbp_metrics = textureMetrics(prediction_lbp, test_y)
+    
+        
+    print("\nGabor Features only \n=======================")
+    prediction_gb = getPredictionSVM(train_gabor, train_y, test_gabor, test_y)
+    test_gb_metrics = textureMetrics(prediction_gb, test_y)
+    
+    print("\nAll Features\n=======================")
+    train_features = np.concatenate((train_int, train_circ,train_gabor,train_lbp), axis=1)
+    test_features = np.concatenate((test_int, test_circ, test_gabor,test_lbp), axis=1)
+    prediction_all = getPredictionSVM(train_features, train_y, test_features, test_y)
+    test_all_metrics = textureMetrics(prediction_all, test_y)
+       
+    
+    return int_metrics, circ_metrics, lbp_metrics, gb_metrics, all_metrics, test_int_metrics, test_circ_metrics, test_lbp_metrics, test_gb_metrics, test_all_metrics
+    
+run("cross_val")
